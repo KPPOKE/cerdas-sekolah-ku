@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, Users, Inbox } from 'lucide-react';
-import { getData, setData, mockGuru, mockSiswa, mockKelas, generateId } from '@/lib/mock-data';
+import { Plus, Pencil, Trash2, Search, Users, Inbox, Loader2 } from 'lucide-react';
+import { useApiData } from '@/hooks/useApiData';
+import { generateId, setData } from '@/lib/mock-data';
 import type { Guru, Siswa, Kelas } from '@/types';
 
 function EmptyState({ message }: { message: string }) {
@@ -21,9 +22,18 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function UserManagement() {
-  const [guru, setGuru] = useState(() => getData<Guru>('guru', mockGuru));
-  const [siswa, setSiswa] = useState(() => getData<Siswa>('siswa', mockSiswa));
-  const kelas = getData<Kelas>('kelas', mockKelas);
+  const { data: guruData, loading: loadG } = useApiData<Guru>('/guru');
+  const { data: siswaData, loading: loadS } = useApiData<Siswa>('/siswa');
+  const { data: kelas } = useApiData<Kelas>('/kelas');
+  
+  const isLoading = loadG || loadS;
+
+  const [guru, setGuru] = useState(() => [] as Guru[]);
+  const [siswa, setSiswa] = useState(() => [] as Siswa[]);
+  
+  // Sync API data to local state
+  if (guruData.length > 0 && guru.length === 0) setGuru(guruData);
+  if (siswaData.length > 0 && siswa.length === 0) setSiswa(siswaData);
 
   const [searchGuru, setSearchGuru] = useState('');
   const [searchSiswa, setSearchSiswa] = useState('');

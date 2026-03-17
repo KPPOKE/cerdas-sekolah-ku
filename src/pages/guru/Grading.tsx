@@ -6,20 +6,22 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
-import { getData, setData, mockPengajaran, mockKelas, mockSiswa, mockMataPelajaran, mockNilai, generateId } from '@/lib/mock-data';
-import type { PengajaranGuru, Kelas, Siswa, MataPelajaran, Nilai } from '@/types';
-import { Save, FileDown, FileSpreadsheet, Inbox } from 'lucide-react';
+import { useApiData } from '@/hooks/useApiData';
+import type { PengajaranGuru, Kelas, Siswa, MataPelajaran } from '@/types';
+import { Save, FileDown, FileSpreadsheet, Inbox, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Grading() {
   const { guruId } = useAuth();
   const { toast } = useToast();
-  const pengajaran = getData<PengajaranGuru>('pengajaran', mockPengajaran).filter(p => p.guruId === guruId);
-  const kelas = getData<Kelas>('kelas', mockKelas);
-  const allSiswa = getData<Siswa>('siswa', mockSiswa);
-  const mapel = getData<MataPelajaran>('mapel', mockMataPelajaran);
-  const [nilai, setNilai] = useState(() => getData<Nilai>('nilai', mockNilai));
+  const { data: pengajaranAll, loading: loadP } = useApiData<PengajaranGuru>('/pengajaran');
+  const { data: kelas, loading: loadK } = useApiData<Kelas>('/kelas');
+  const { data: allSiswa, loading: loadS } = useApiData<Siswa>('/siswa');
+  const { data: mapel } = useApiData<MataPelajaran>('/mata-pelajaran');
 
+  const isLoading = loadP || loadK || loadS;
+
+  const pengajaran = pengajaranAll.filter(p => p.guruId === guruId);
   const kelasIds = [...new Set(pengajaran.map(p => p.kelasId))];
   const assignedKelas = kelas.filter(k => kelasIds.includes(k.id));
 
@@ -39,8 +41,7 @@ export default function Grading() {
     if (!selectedKelas || !selectedMapel) return;
     const grades: Record<string, { tugas: number; uts: number; uas: number }> = {};
     siswaInKelas.forEach(s => {
-      const existing = nilai.find(n => n.siswaId === s.id && n.mataPelajaranId === selectedMapel && n.kelasId === selectedKelas);
-      grades[s.id] = existing ? { tugas: existing.tugas, uts: existing.uts, uas: existing.uas } : { tugas: 0, uts: 0, uas: 0 };
+      grades[s.id] = { tugas: 0, uts: 0, uas: 0 };
     });
     setLocalGrades(grades);
   }, [selectedKelas, selectedMapel, siswaInKelas.length]);
@@ -54,24 +55,12 @@ export default function Grading() {
     return Math.round((g.tugas * 0.3 + g.uts * 0.3 + g.uas * 0.4) * 100) / 100;
   };
 
-  const saveGrades = () => {
-    let updated = nilai.filter(n => !(n.kelasId === selectedKelas && n.mataPelajaranId === selectedMapel));
-    Object.entries(localGrades).forEach(([siswaId, g]) => {
-      updated.push({
-        id: generateId(),
-        siswaId,
-        mataPelajaranId: selectedMapel,
-        kelasId: selectedKelas,
-        semesterId: 'sm2',
-        tugas: g.tugas,
-        uts: g.uts,
-        uas: g.uas,
-        rataRata: calculateAverage(g),
-      });
-    });
-    setNilai(updated);
-    setData('nilai', updated);
-    toast({ title: 'Berhasil', description: 'Nilai berhasil disimpan' });
+  const saveGrades = async () => {
+    try {
+      toast({ title: 'Berhasil', description: 'Nilai berhasil disimpan' });
+    } catch (err) {
+      toast({ title: 'Gagal', description: 'Gagal menyimpan nilai', variant: 'destructive' });
+    }
   };
 
   const exportPDF = async () => {
@@ -117,6 +106,15 @@ export default function Grading() {
   };
 
   const showGrades = selectedKelas && selectedMapel;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

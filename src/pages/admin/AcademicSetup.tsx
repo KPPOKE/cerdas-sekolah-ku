@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Inbox } from 'lucide-react';
-import { getData, setData, mockTahunAjaran, mockSemester, mockMataPelajaran, mockKelas, mockGuru, mockPengajaran, generateId } from '@/lib/mock-data';
+import { Plus, Pencil, Trash2, Inbox, Loader2 } from 'lucide-react';
+import { useApiData } from '@/hooks/useApiData';
+import { generateId, setData } from '@/lib/mock-data';
 import type { TahunAjaran, Semester, MataPelajaran, Kelas, Guru, PengajaranGuru } from '@/types';
 
 function EmptyState({ message }: { message: string }) {
@@ -22,12 +23,26 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function AcademicSetup() {
-  const [tahunAjaran, setTahunAjaran] = useState(() => getData<TahunAjaran>('tahunAjaran', mockTahunAjaran));
-  const [semester, setSemester] = useState(() => getData<Semester>('semester', mockSemester));
-  const [mapel, setMapel] = useState(() => getData<MataPelajaran>('mapel', mockMataPelajaran));
-  const [pengajaran, setPengajaran] = useState(() => getData<PengajaranGuru>('pengajaran', mockPengajaran));
-  const kelas = getData<Kelas>('kelas', mockKelas);
-  const guru = getData<Guru>('guru', mockGuru);
+  const { data: tahunAjaranData, loading: loadTA } = useApiData<TahunAjaran>('/tahun-ajaran');
+  const { data: semesterData, loading: loadSem } = useApiData<Semester>('/semester');
+  const { data: mapelData, loading: loadMapel } = useApiData<MataPelajaran>('/mata-pelajaran');
+  const { data: pengajaranData, loading: loadPG } = useApiData<PengajaranGuru>('/pengajaran');
+  const { data: kelas } = useApiData<Kelas>('/kelas');
+  const { data: guru } = useApiData<Guru>('/guru');
+  
+  const isLoading = loadTA || loadSem || loadMapel || loadPG;
+
+  const [tahunAjaran, setTahunAjaran] = useState(() => [] as TahunAjaran[]);
+  const [semester, setSemester] = useState(() => [] as Semester[]);
+  const [mapel, setMapel] = useState(() => [] as MataPelajaran[]);
+  const [pengajaran, setPengajaran] = useState(() => [] as PengajaranGuru[]);
+
+  // Sync API data to local state
+  useState(() => {});
+  if (tahunAjaranData.length > 0 && tahunAjaran.length === 0) setTahunAjaran(tahunAjaranData);
+  if (semesterData.length > 0 && semester.length === 0) setSemester(semesterData);
+  if (mapelData.length > 0 && mapel.length === 0) setMapel(mapelData);
+  if (pengajaranData.length > 0 && pengajaran.length === 0) setPengajaran(pengajaranData);
 
   // TA Dialog
   const [taDialog, setTaDialog] = useState(false);

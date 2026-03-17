@@ -1,13 +1,14 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { User, UserRole } from '@/types';
-import { mockUsers, mockGuru } from '@/lib/mock-data';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import type { User } from '@/types';
+import api from '@/lib/axios';
 
 interface AuthContextType {
   user: User | null;
   guruId: string | null;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,28 +19,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return stored ? JSON.parse(stored) : null;
   });
 
-  const login = useCallback((username: string, _password: string): boolean => {
-    const found = mockUsers.find(u => u.username === username);
-    if (found) {
-      setUser(found);
-      localStorage.setItem('currentUser', JSON.stringify(found));
-      return true;
-    }
-    return false;
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await api.get('/me');
+          setUser(response.data.user);
+          localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+        } catch (error) {
+          console.error("Session expired or invalid token", error);
+          setUser(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('currentUser');
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
+  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
+    try {
+      // Token-based auth — no CSRF cookie needed
+      const response = await api.post('/login', { username, password });
+      const { token, user: userData } = response.data;
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('currentUser', JSON.stringify(userData));
+      setUser(userData);
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/logout');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+    }
   }, []);
 
   // Map user to guru ID
-  const guruId = user?.role === 'guru'
-    ? mockGuru.find(g => g.email === user.email)?.id || null
-    : null;
+  const guruId = user?.role === 'guru' ? (user as any).guruId || null : null;
 
   return (
-    <AuthContext.Provider value={{ user, guruId, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, guruId, login, logout, isAuthenticated: !!user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

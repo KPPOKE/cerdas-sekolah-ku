@@ -7,16 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { getData, mockPengajaran, mockKelas, mockSiswa } from '@/lib/mock-data';
+import { useApiData } from '@/hooks/useApiData';
 import type { PengajaranGuru, Kelas, Siswa } from '@/types';
-import { Eye, Inbox } from 'lucide-react';
+import { Eye, Inbox, Loader2 } from 'lucide-react';
 
 export default function StudentList() {
   const { guruId } = useAuth();
-  const pengajaran = getData<PengajaranGuru>('pengajaran', mockPengajaran).filter(p => p.guruId === guruId);
-  const kelas = getData<Kelas>('kelas', mockKelas);
-  const allSiswa = getData<Siswa>('siswa', mockSiswa);
+  const { data: pengajaranAll, loading: loadP } = useApiData<PengajaranGuru>('/pengajaran');
+  const { data: kelas, loading: loadK } = useApiData<Kelas>('/kelas');
+  const { data: allSiswa, loading: loadS } = useApiData<Siswa>('/siswa');
 
+  const isLoading = loadP || loadK || loadS;
+
+  const pengajaran = pengajaranAll.filter(p => p.guruId === guruId);
   const kelasIds = [...new Set(pengajaran.map(p => p.kelasId))];
   const assignedKelas = kelas.filter(k => kelasIds.includes(k.id));
 
@@ -24,6 +27,15 @@ export default function StudentList() {
   const [detailSiswa, setDetailSiswa] = useState<Siswa | null>(null);
 
   const siswaInKelas = useMemo(() => allSiswa.filter(s => s.kelasId === selectedKelas), [selectedKelas, allSiswa]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

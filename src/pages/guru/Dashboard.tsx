@@ -1,17 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { getData, mockPengajaran, mockKelas, mockMataPelajaran, mockSiswa } from '@/lib/mock-data';
+import { useApiData } from '@/hooks/useApiData';
 import type { PengajaranGuru, Kelas, MataPelajaran, Siswa } from '@/types';
-import { BookOpen, Users, Clock } from 'lucide-react';
+import { BookOpen, Users, Clock, Loader2 } from 'lucide-react';
 
 export default function GuruDashboard() {
   const { guruId, user } = useAuth();
-  const pengajaran = getData<PengajaranGuru>('pengajaran', mockPengajaran).filter(p => p.guruId === guruId);
-  const kelas = getData<Kelas>('kelas', mockKelas);
-  const mapel = getData<MataPelajaran>('mapel', mockMataPelajaran);
-  const siswa = getData<Siswa>('siswa', mockSiswa);
+  const { data: pengajaranAll, loading: loadPengajaran } = useApiData<PengajaranGuru>('/pengajaran');
+  const { data: kelas, loading: loadKelas } = useApiData<Kelas>('/kelas');
+  const { data: mapel } = useApiData<MataPelajaran>('/mata-pelajaran');
+  const { data: siswa, loading: loadSiswa } = useApiData<Siswa>('/siswa');
 
+  const isLoading = loadPengajaran || loadKelas || loadSiswa;
+
+  const pengajaran = pengajaranAll.filter(p => p.guruId === guruId);
   const kelasIds = [...new Set(pengajaran.map(p => p.kelasId))];
   const assignedKelas = kelas.filter(k => kelasIds.includes(k.id));
   const totalSiswa = siswa.filter(s => kelasIds.includes(s.kelasId)).length;
@@ -22,6 +25,15 @@ export default function GuruDashboard() {
     mapel: mapel.find(m => m.id === p.mataPelajaranId)?.nama || '-',
     kelas: kelas.find(k => k.id === p.kelasId)?.nama || '-',
   }));
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -71,6 +83,7 @@ export default function GuruDashboard() {
           <CardHeader><CardTitle className="font-heading text-lg">Kelas yang Diampu</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-3">
+              {assignedKelas.length === 0 && <p className="text-sm text-muted-foreground">Belum ada kelas yang diampu</p>}
               {assignedKelas.map(k => {
                 const jumlahSiswa = siswa.filter(s => s.kelasId === k.id).length;
                 const mapelList = pengajaran.filter(p => p.kelasId === k.id).map(p => mapel.find(m => m.id === p.mataPelajaranId)?.nama).filter(Boolean);
@@ -92,6 +105,7 @@ export default function GuruDashboard() {
           <CardHeader><CardTitle className="font-heading text-lg">Jadwal Hari Ini</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-3">
+              {jadwalHariIni.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada jadwal hari ini</p>}
               {jadwalHariIni.map((j, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
                   <div className="text-xs font-mono text-muted-foreground w-24 flex-shrink-0">{j.jam}</div>

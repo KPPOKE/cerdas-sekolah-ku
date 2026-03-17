@@ -15,15 +15,21 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const success = login(username, password);
+    setIsLoading(true);
+
+    const success = await login(username, password);
+
+    setIsLoading(false);
     if (success) {
-      const stored = JSON.parse(localStorage.getItem('currentUser')!);
+      const stored = JSON.parse(localStorage.getItem('currentUser') || '{}');
       navigate(stored.role === 'admin' ? '/admin' : '/guru');
     } else {
-      setError('Username atau password salah. Coba: admin / guru1 / guru2');
+      setError('Username atau password salah.');
     }
   };
 
@@ -74,8 +80,8 @@ export default function Login() {
               <p className="text-sm text-destructive bg-destructive/10 p-2 rounded-md">{error}</p>
             )}
 
-            <Button type="submit" className="w-full">
-              Masuk
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Memproses...' : 'Masuk'}
             </Button>
 
             <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md space-y-1">
@@ -83,7 +89,7 @@ export default function Login() {
               <p>Admin: <span className="font-mono">admin</span></p>
               <p>Guru 1: <span className="font-mono">guru1</span> (Bu Siti)</p>
               <p>Guru 2: <span className="font-mono">guru2</span> (Pak Budi)</p>
-              <p className="text-xs italic">Password: apa saja</p>
+              <p className="text-xs italic">Password: password</p>
             </div>
           </form>
         </CardContent>

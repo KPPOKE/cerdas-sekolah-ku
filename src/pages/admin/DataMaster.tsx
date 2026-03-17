@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, Inbox } from 'lucide-react';
-import { getData, mockSiswa, mockGuru, mockKelas } from '@/lib/mock-data';
+import { Search, Eye, Inbox, Loader2 } from 'lucide-react';
+import { useApiData } from '@/hooks/useApiData';
 import type { Siswa, Guru, Kelas } from '@/types';
 
 function EmptyState({ message }: { message: string }) {
@@ -20,9 +20,11 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function DataMaster() {
-  const siswa = getData<Siswa>('siswa', mockSiswa);
-  const guru = getData<Guru>('guru', mockGuru);
-  const kelas = getData<Kelas>('kelas', mockKelas);
+  const { data: siswa, loading: loadS } = useApiData<Siswa>('/siswa');
+  const { data: guru, loading: loadG } = useApiData<Guru>('/guru');
+  const { data: kelas, loading: loadK } = useApiData<Kelas>('/kelas');
+
+  const isLoading = loadS || loadG || loadK;
 
   const [searchSiswa, setSearchSiswa] = useState('');
   const [searchGuru, setSearchGuru] = useState('');
@@ -31,6 +33,15 @@ export default function DataMaster() {
 
   const filteredSiswa = siswa.filter(s => s.nama.toLowerCase().includes(searchSiswa.toLowerCase()));
   const filteredGuru = guru.filter(g => g.nama.toLowerCase().includes(searchGuru.toLowerCase()));
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

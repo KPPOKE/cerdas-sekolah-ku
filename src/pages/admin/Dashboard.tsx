@@ -1,12 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, GraduationCap, School, Activity } from 'lucide-react';
-import { getData, mockSiswa, mockGuru, mockKelas } from '@/lib/mock-data';
+import { Users, GraduationCap, School, Activity, Loader2 } from 'lucide-react';
+import { useApiData } from '@/hooks/useApiData';
 import type { Siswa, Guru, Kelas } from '@/types';
 
 export default function AdminDashboard() {
-  const siswa = getData<Siswa>('siswa', mockSiswa);
-  const guru = getData<Guru>('guru', mockGuru);
-  const kelas = getData<Kelas>('kelas', mockKelas);
+  const { data: siswa, loading: loadS } = useApiData<Siswa>('/siswa');
+  const { data: guru, loading: loadG } = useApiData<Guru>('/guru');
+  const { data: kelas, loading: loadK } = useApiData<Kelas>('/kelas');
+
+  const isLoading = loadS || loadG || loadK;
 
   const stats = [
     { label: 'Total Siswa', value: siswa.length, icon: Users, color: 'bg-primary/10 text-primary' },
@@ -21,6 +23,15 @@ export default function AdminDashboard() {
     { text: 'Mata pelajaran Matematika ditambahkan', time: '1 hari lalu' },
     { text: 'Tahun Ajaran 2025/2026 diaktifkan', time: '2 hari lalu' },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
