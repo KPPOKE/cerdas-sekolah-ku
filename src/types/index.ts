@@ -6,6 +6,7 @@ export interface User {
   nama: string;
   role: UserRole;
   email: string;
+  mustChangePassword?: boolean;
 }
 
 export interface Siswa {

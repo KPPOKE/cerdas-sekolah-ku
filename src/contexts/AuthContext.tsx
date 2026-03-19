@@ -7,6 +7,7 @@ interface AuthContextType {
   guruId: string | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  clearMustChangePassword: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -44,7 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     try {
-      // Token-based auth — no CSRF cookie needed
       const response = await api.post('/login', { username, password });
       const { token, user: userData } = response.data;
       
@@ -70,11 +70,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearMustChangePassword = useCallback(() => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, mustChangePassword: false };
+      localStorage.setItem('currentUser', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   // Map user to guru ID
   const guruId = user?.role === 'guru' ? (user as any).guruId || null : null;
 
   return (
-    <AuthContext.Provider value={{ user, guruId, login, logout, isAuthenticated: !!user, isLoading }}>
+    <AuthContext.Provider value={{ user, guruId, login, logout, clearMustChangePassword, isAuthenticated: !!user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

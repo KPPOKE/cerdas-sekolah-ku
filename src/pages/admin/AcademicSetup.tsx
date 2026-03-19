@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, Inbox, Loader2 } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
-import { generateId, setData } from '@/lib/mock-data';
+import api from '@/lib/axios';
+import { useToast } from '@/hooks/use-toast';
 import type { TahunAjaran, Semester, MataPelajaran, Kelas, Guru, PengajaranGuru } from '@/types';
 
 function EmptyState({ message }: { message: string }) {
@@ -23,26 +24,16 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function AcademicSetup() {
-  const { data: tahunAjaranData, loading: loadTA } = useApiData<TahunAjaran>('/tahun-ajaran');
-  const { data: semesterData, loading: loadSem } = useApiData<Semester>('/semester');
-  const { data: mapelData, loading: loadMapel } = useApiData<MataPelajaran>('/mata-pelajaran');
-  const { data: pengajaranData, loading: loadPG } = useApiData<PengajaranGuru>('/pengajaran');
+  const { data: tahunAjaran, loading: loadTA, refetch: refetchTA } = useApiData<TahunAjaran>('/tahun-ajaran');
+  const { data: semester } = useApiData<Semester>('/semester');
+  const { data: mapel, loading: loadMapel, refetch: refetchMapel } = useApiData<MataPelajaran>('/mata-pelajaran');
+  const { data: pengajaran, loading: loadPG, refetch: refetchPG } = useApiData<PengajaranGuru>('/pengajaran');
   const { data: kelas } = useApiData<Kelas>('/kelas');
   const { data: guru } = useApiData<Guru>('/guru');
-  
-  const isLoading = loadTA || loadSem || loadMapel || loadPG;
+  const { toast } = useToast();
 
-  const [tahunAjaran, setTahunAjaran] = useState(() => [] as TahunAjaran[]);
-  const [semester, setSemester] = useState(() => [] as Semester[]);
-  const [mapel, setMapel] = useState(() => [] as MataPelajaran[]);
-  const [pengajaran, setPengajaran] = useState(() => [] as PengajaranGuru[]);
-
-  // Sync API data to local state
-  useState(() => {});
-  if (tahunAjaranData.length > 0 && tahunAjaran.length === 0) setTahunAjaran(tahunAjaranData);
-  if (semesterData.length > 0 && semester.length === 0) setSemester(semesterData);
-  if (mapelData.length > 0 && mapel.length === 0) setMapel(mapelData);
-  if (pengajaranData.length > 0 && pengajaran.length === 0) setPengajaran(pengajaranData);
+  const isLoading = loadTA || loadMapel || loadPG;
+  const [saving, setSaving] = useState(false);
 
   // TA Dialog
   const [taDialog, setTaDialog] = useState(false);
@@ -58,59 +49,106 @@ export default function AcademicSetup() {
   const [pgDialog, setPgDialog] = useState(false);
   const [pgForm, setPgForm] = useState({ guruId: '', kelasId: '', mataPelajaranId: '', semesterId: '' });
 
-  const saveTa = () => {
-    let updated: TahunAjaran[];
-    if (editTa) {
-      updated = tahunAjaran.map(t => t.id === editTa.id ? { ...t, ...taForm } : t);
-    } else {
-      updated = [...tahunAjaran, { id: generateId(), ...taForm, aktif: false }];
+  // ---- Tahun Ajaran CRUD ----
+  const saveTa = async () => {
+    setSaving(true);
+    try {
+      if (editTa) {
+        await api.put(`/tahun-ajaran/${editTa.id}`, taForm);
+        toast({ title: 'Berhasil', description: 'Tahun ajaran berhasil diperbarui' });
+      } else {
+        await api.post('/tahun-ajaran', taForm);
+        toast({ title: 'Berhasil', description: 'Tahun ajaran berhasil ditambahkan' });
+      }
+      setTaDialog(false);
+      refetchTA();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menyimpan tahun ajaran';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
-    setTahunAjaran(updated);
-    setData('tahunAjaran', updated);
-    setTaDialog(false);
   };
 
-  const deleteTa = (id: string) => {
-    const updated = tahunAjaran.filter(t => t.id !== id);
-    setTahunAjaran(updated);
-    setData('tahunAjaran', updated);
-  };
-
-  const toggleTaAktif = (id: string) => {
-    const updated = tahunAjaran.map(t => ({ ...t, aktif: t.id === id }));
-    setTahunAjaran(updated);
-    setData('tahunAjaran', updated);
-  };
-
-  const saveMapel = () => {
-    let updated: MataPelajaran[];
-    if (editMapel) {
-      updated = mapel.map(m => m.id === editMapel.id ? { ...m, ...mapelForm } : m);
-    } else {
-      updated = [...mapel, { id: generateId(), ...mapelForm }];
+  const deleteTa = async (id: string) => {
+    try {
+      await api.delete(`/tahun-ajaran/${id}`);
+      toast({ title: 'Berhasil', description: 'Tahun ajaran berhasil dihapus' });
+      refetchTA();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menghapus tahun ajaran';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
     }
-    setMapel(updated);
-    setData('mapel', updated);
-    setMapelDialog(false);
   };
 
-  const deleteMapel = (id: string) => {
-    const updated = mapel.filter(m => m.id !== id);
-    setMapel(updated);
-    setData('mapel', updated);
+  const toggleTaAktif = async (id: string) => {
+    try {
+      await api.put(`/tahun-ajaran/${id}/toggle-aktif`);
+      toast({ title: 'Berhasil', description: 'Status tahun ajaran diperbarui' });
+      refetchTA();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal mengubah status';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    }
   };
 
-  const savePengajaran = () => {
-    const updated = [...pengajaran, { id: generateId(), ...pgForm }];
-    setPengajaran(updated);
-    setData('pengajaran', updated);
-    setPgDialog(false);
+  // ---- Mata Pelajaran CRUD ----
+  const saveMapel = async () => {
+    setSaving(true);
+    try {
+      if (editMapel) {
+        await api.put(`/mata-pelajaran/${editMapel.id}`, mapelForm);
+        toast({ title: 'Berhasil', description: 'Mata pelajaran berhasil diperbarui' });
+      } else {
+        await api.post('/mata-pelajaran', mapelForm);
+        toast({ title: 'Berhasil', description: 'Mata pelajaran berhasil ditambahkan' });
+      }
+      setMapelDialog(false);
+      refetchMapel();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menyimpan mata pelajaran';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deletePengajaran = (id: string) => {
-    const updated = pengajaran.filter(p => p.id !== id);
-    setPengajaran(updated);
-    setData('pengajaran', updated);
+  const deleteMapel = async (id: string) => {
+    try {
+      await api.delete(`/mata-pelajaran/${id}`);
+      toast({ title: 'Berhasil', description: 'Mata pelajaran berhasil dihapus' });
+      refetchMapel();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menghapus mata pelajaran';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    }
+  };
+
+  // ---- Pengajaran Guru CRUD ----
+  const savePengajaran = async () => {
+    setSaving(true);
+    try {
+      await api.post('/pengajaran', pgForm);
+      toast({ title: 'Berhasil', description: 'Penugasan guru berhasil ditambahkan' });
+      setPgDialog(false);
+      refetchPG();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menyimpan penugasan';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deletePengajaran = async (id: string) => {
+    try {
+      await api.delete(`/pengajaran/${id}`);
+      toast({ title: 'Berhasil', description: 'Penugasan guru berhasil dihapus' });
+      refetchPG();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menghapus penugasan';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    }
   };
 
   return (
@@ -127,6 +165,7 @@ export default function AcademicSetup() {
           <TabsTrigger value="pengajaran">Penugasan Guru</TabsTrigger>
         </TabsList>
 
+        {/* ===== TAHUN AJARAN TAB ===== */}
         <TabsContent value="tahun-ajaran">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -163,6 +202,7 @@ export default function AcademicSetup() {
           </Card>
         </TabsContent>
 
+        {/* ===== MATA PELAJARAN TAB ===== */}
         <TabsContent value="mapel">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -194,6 +234,7 @@ export default function AcademicSetup() {
           </Card>
         </TabsContent>
 
+        {/* ===== PENUGASAN GURU TAB ===== */}
         <TabsContent value="pengajaran">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -225,7 +266,7 @@ export default function AcademicSetup() {
         </TabsContent>
       </Tabs>
 
-      {/* TA Dialog */}
+      {/* ===== TA DIALOG ===== */}
       <Dialog open={taDialog} onOpenChange={setTaDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">{editTa ? 'Edit' : 'Tambah'} Tahun Ajaran</DialogTitle></DialogHeader>
@@ -236,11 +277,17 @@ export default function AcademicSetup() {
               <div className="space-y-2"><Label>Selesai</Label><Input type="date" value={taForm.selesai} onChange={e => setTaForm({ ...taForm, selesai: e.target.value })} /></div>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setTaDialog(false)}>Batal</Button><Button onClick={saveTa}>Simpan</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTaDialog(false)}>Batal</Button>
+            <Button onClick={saveTa} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Simpan
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Mapel Dialog */}
+      {/* ===== MAPEL DIALOG ===== */}
       <Dialog open={mapelDialog} onOpenChange={setMapelDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">{editMapel ? 'Edit' : 'Tambah'} Mata Pelajaran</DialogTitle></DialogHeader>
@@ -249,11 +296,17 @@ export default function AcademicSetup() {
             <div className="space-y-2"><Label>Nama</Label><Input placeholder="Contoh: Matematika" value={mapelForm.nama} onChange={e => setMapelForm({ ...mapelForm, nama: e.target.value })} /></div>
             <div className="space-y-2"><Label>Deskripsi</Label><Input value={mapelForm.deskripsi} onChange={e => setMapelForm({ ...mapelForm, deskripsi: e.target.value })} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setMapelDialog(false)}>Batal</Button><Button onClick={saveMapel}>Simpan</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMapelDialog(false)}>Batal</Button>
+            <Button onClick={saveMapel} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Simpan
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Pengajaran Dialog */}
+      {/* ===== PENGAJARAN DIALOG ===== */}
       <Dialog open={pgDialog} onOpenChange={setPgDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">Tambah Penugasan Guru</DialogTitle></DialogHeader>
@@ -280,7 +333,13 @@ export default function AcademicSetup() {
               </Select>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setPgDialog(false)}>Batal</Button><Button onClick={savePengajaran}>Simpan</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPgDialog(false)}>Batal</Button>
+            <Button onClick={savePengajaran} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Simpan
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

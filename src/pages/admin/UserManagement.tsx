@@ -7,9 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, Users, Inbox, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Inbox, Loader2, KeyRound } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
-import { generateId, setData } from '@/lib/mock-data';
+import api from '@/lib/axios';
+import { useToast } from '@/hooks/use-toast';
 import type { Guru, Siswa, Kelas } from '@/types';
 
 function EmptyState({ message }: { message: string }) {
@@ -22,18 +23,13 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function UserManagement() {
-  const { data: guruData, loading: loadG } = useApiData<Guru>('/guru');
-  const { data: siswaData, loading: loadS } = useApiData<Siswa>('/siswa');
+  const { data: guru, loading: loadG, refetch: refetchGuru } = useApiData<Guru>('/guru');
+  const { data: siswa, loading: loadS, refetch: refetchSiswa } = useApiData<Siswa>('/siswa');
   const { data: kelas } = useApiData<Kelas>('/kelas');
-  
-  const isLoading = loadG || loadS;
+  const { toast } = useToast();
 
-  const [guru, setGuru] = useState(() => [] as Guru[]);
-  const [siswa, setSiswa] = useState(() => [] as Siswa[]);
-  
-  // Sync API data to local state
-  if (guruData.length > 0 && guru.length === 0) setGuru(guruData);
-  if (siswaData.length > 0 && siswa.length === 0) setSiswa(siswaData);
+  const isLoading = loadG || loadS;
+  const [saving, setSaving] = useState(false);
 
   const [searchGuru, setSearchGuru] = useState('');
   const [searchSiswa, setSearchSiswa] = useState('');
@@ -60,22 +56,59 @@ export default function UserManagement() {
     setGuruDialog(true);
   };
 
-  const saveGuru = () => {
-    let updated: Guru[];
-    if (editGuru) {
-      updated = guru.map(g => g.id === editGuru.id ? { ...g, ...guruForm } : g);
-    } else {
-      updated = [...guru, { id: generateId(), ...guruForm }];
+  const saveGuru = async () => {
+    setSaving(true);
+    try {
+      if (editGuru) {
+        await api.put(`/guru/${editGuru.id}`, guruForm);
+        toast({ title: 'Berhasil', description: 'Data guru berhasil diperbarui' });
+      } else {
+        const res = await api.post('/guru', guruForm);
+        const account = res.data?.account;
+        if (account) {
+          toast({
+            title: '✅ Guru & Akun Login Dibuat',
+            description: `Username: ${account.username} | Password: ${account.defaultPassword}`,
+            duration: 15000,
+          });
+        } else {
+          toast({ title: 'Berhasil', description: 'Data guru berhasil ditambahkan' });
+        }
+      }
+      setGuruDialog(false);
+      refetchGuru();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menyimpan data guru';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
-    setGuru(updated);
-    setData('guru', updated);
-    setGuruDialog(false);
   };
 
-  const deleteGuru = (id: string) => {
-    const updated = guru.filter(g => g.id !== id);
-    setGuru(updated);
-    setData('guru', updated);
+  const deleteGuru = async (id: string) => {
+    try {
+      await api.delete(`/guru/${id}`);
+      toast({ title: 'Berhasil', description: 'Data guru berhasil dihapus' });
+      refetchGuru();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menghapus data guru';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    }
+  };
+
+  const resetPasswordGuru = async (id: string) => {
+    try {
+      const res = await api.post(`/guru/${id}/reset-password`);
+      const username = res.data?.username;
+      toast({
+        title: '🔑 Password Direset',
+        description: `Username: ${username} | Password baru: password`,
+        duration: 10000,
+      });
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal mereset password';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    }
   };
 
   const openAddSiswa = () => {
@@ -90,22 +123,35 @@ export default function UserManagement() {
     setSiswaDialog(true);
   };
 
-  const saveSiswa = () => {
-    let updated: Siswa[];
-    if (editSiswa) {
-      updated = siswa.map(s => s.id === editSiswa.id ? { ...s, ...siswaForm } : s);
-    } else {
-      updated = [...siswa, { id: generateId(), ...siswaForm }];
+  const saveSiswa = async () => {
+    setSaving(true);
+    try {
+      if (editSiswa) {
+        await api.put(`/siswa/${editSiswa.id}`, siswaForm);
+        toast({ title: 'Berhasil', description: 'Data siswa berhasil diperbarui' });
+      } else {
+        await api.post('/siswa', siswaForm);
+        toast({ title: 'Berhasil', description: 'Data siswa berhasil ditambahkan' });
+      }
+      setSiswaDialog(false);
+      refetchSiswa();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menyimpan data siswa';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
-    setSiswa(updated);
-    setData('siswa', updated);
-    setSiswaDialog(false);
   };
 
-  const deleteSiswa = (id: string) => {
-    const updated = siswa.filter(s => s.id !== id);
-    setSiswa(updated);
-    setData('siswa', updated);
+  const deleteSiswa = async (id: string) => {
+    try {
+      await api.delete(`/siswa/${id}`);
+      toast({ title: 'Berhasil', description: 'Data siswa berhasil dihapus' });
+      refetchSiswa();
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Gagal menghapus data siswa';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    }
   };
 
   const filteredGuru = guru.filter(g => g.nama.toLowerCase().includes(searchGuru.toLowerCase()) || g.nip.includes(searchGuru));
@@ -136,7 +182,12 @@ export default function UserManagement() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Cari nama atau NIP..." className="pl-9" value={searchGuru} onChange={e => setSearchGuru(e.target.value)} />
               </div>
-              {filteredGuru.length === 0 ? <EmptyState message="Belum ada data guru" /> : (
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground text-sm">Memuat...</span>
+                </div>
+              ) : filteredGuru.length === 0 ? <EmptyState message="Belum ada data guru" /> : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -156,8 +207,9 @@ export default function UserManagement() {
                           <TableCell className="hidden md:table-cell text-sm">{g.email}</TableCell>
                           <TableCell className="hidden sm:table-cell text-sm">{g.telepon}</TableCell>
                           <TableCell className="text-right space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditGuru(g)}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteGuru(g.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditGuru(g)}><Pencil className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Reset Password" onClick={() => resetPasswordGuru(g.id)} className="text-amber-600"><KeyRound className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Hapus" onClick={() => deleteGuru(g.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -181,7 +233,12 @@ export default function UserManagement() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Cari nama atau NIS..." className="pl-9" value={searchSiswa} onChange={e => setSearchSiswa(e.target.value)} />
               </div>
-              {filteredSiswa.length === 0 ? <EmptyState message="Belum ada data siswa" /> : (
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground text-sm">Memuat...</span>
+                </div>
+              ) : filteredSiswa.length === 0 ? <EmptyState message="Belum ada data siswa" /> : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -241,7 +298,10 @@ export default function UserManagement() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGuruDialog(false)}>Batal</Button>
-            <Button onClick={saveGuru}>Simpan</Button>
+            <Button onClick={saveGuru} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Simpan
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -279,7 +339,10 @@ export default function UserManagement() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSiswaDialog(false)}>Batal</Button>
-            <Button onClick={saveSiswa}>Simpan</Button>
+            <Button onClick={saveSiswa} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Simpan
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
