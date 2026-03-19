@@ -9,43 +9,74 @@ export interface User {
   mustChangePassword?: boolean;
 }
 
-export interface Siswa {
-  id: string;
-  nis: string;
-  nama: string;
-  tempatLahir: string;
-  tanggalLahir: string;
-  jenisKelamin: 'L' | 'P';
-  agama: string;
-  alamat: string;
-  kelasId: string;
-  namaAyah: string;
-  namaIbu: string;
-  teleponOrtu: string;
-  foto?: string;
-}
-
 export interface Guru {
   id: string;
-  nip: string;
+  // Identitas
   nama: string;
+  nip: string | null;
+  pangkatGolongan: string | null;
+  nik: string;
+  pegId: string | null;
+  npk: string | null;
+  nuptk: string | null;
+  // Pribadi
   tempatLahir: string;
   tanggalLahir: string;
-  jenisKelamin: 'L' | 'P';
-  agama: string;
+  // Alamat
+  alamatJalan: string;
+  alamatKelurahan: string;
+  alamatKecamatan: string;
+  alamatKabKota: string;
+  // Kepegawaian
+  statusPegawai: string;
+  npsn: string | null;
+  nsm: string | null;
+  madrasahTempatTugas: string;
+  kecamatanTugas: string;
+  sukuDinasPendidikan: string;
+  // Pendidikan
+  pendidikanTerakhir: string;
+  bidangStudiPendidikan: string | null;
+  mapelDiampu: string | null;
+  // Sertifikasi
+  statusSertifikasi: string | null;
+  bidangStudiSertifikasi: string | null;
+  nomorPesertaSertifikasi: string | null;
+  nomorSertifikatPendidik: string | null;
+  sertifikasiKedua: string | null;
+  // Kontak
+  noHandphone: string | null;
+  email: string | null;
+  // Lain-lain
+  keterangan: string | null;
+}
+
+export interface Siswa {
+  id: string;
+  kelasId: string;
+  namaLengkap: string;
+  nisn: string | null;
+  nik: string | null;
+  tempatLahir: string;
+  tanggalLahir: string;
+  umur: string | null;
+  status: string;
+  jenisKelamin: string;
   alamat: string;
-  telepon: string;
-  email: string;
-  pendidikan: string;
-  foto?: string;
+  noTelepon: string | null;
+  kebutuhanKhusus: string | null;
+  disabilitas: string | null;
+  nomorKipPip: string | null;
+  namaAyahKandung: string | null;
+  namaIbuKandung: string | null;
+  namaWali: string | null;
 }
 
 export interface Kelas {
   id: string;
-  nama: string;
   tingkat: number;
-  tahunAjaranId: string;
-  guruId: string;
+  namaKelas: string;
+  guruId: string | null;
 }
 
 export interface TahunAjaran {

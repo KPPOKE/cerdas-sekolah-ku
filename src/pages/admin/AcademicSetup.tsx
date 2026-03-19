@@ -251,7 +251,7 @@ export default function AcademicSetup() {
                     {pengajaran.map(pg => (
                       <TableRow key={pg.id}>
                         <TableCell className="font-medium">{guru.find(g => g.id === pg.guruId)?.nama || '-'}</TableCell>
-                        <TableCell>{kelas.find(k => k.id === pg.kelasId)?.nama || '-'}</TableCell>
+                        <TableCell>{kelas.find(k => k.id === pg.kelasId)?.namaKelas || '-'}</TableCell>
                         <TableCell className="hidden sm:table-cell">{mapel.find(m => m.id === pg.mataPelajaranId)?.nama || '-'}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => deletePengajaran(pg.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
@@ -322,7 +322,7 @@ export default function AcademicSetup() {
               <Label>Kelas</Label>
               <Select value={pgForm.kelasId} onValueChange={v => setPgForm({ ...pgForm, kelasId: v })}>
                 <SelectTrigger><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
-                <SelectContent>{kelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama}</SelectItem>)}</SelectContent>
+                <SelectContent>{kelas.map(k => <SelectItem key={k.id} value={k.id}>{k.namaKelas}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">

@@ -77,7 +77,7 @@ export default function Grading() {
 
     const rows = siswaInKelas.map((s, i) => {
       const g = localGrades[s.id] || { tugas: 0, uts: 0, uas: 0 };
-      return [i + 1, s.nama, g.tugas, g.uts, g.uas, calculateAverage(g)];
+      return [i + 1, s.namaLengkap, g.tugas, g.uts, g.uas, calculateAverage(g)];
     });
 
     (doc as any).autoTable({
@@ -96,7 +96,7 @@ export default function Grading() {
 
     const data = siswaInKelas.map((s, i) => {
       const g = localGrades[s.id] || { tugas: 0, uts: 0, uas: 0 };
-      return { No: i + 1, Nama: s.nama, Tugas: g.tugas, UTS: g.uts, UAS: g.uas, 'Rata-rata': calculateAverage(g) };
+      return { No: i + 1, Nama: s.namaLengkap, Tugas: g.tugas, UTS: g.uts, UAS: g.uas, 'Rata-rata': calculateAverage(g) };
     });
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -130,7 +130,7 @@ export default function Grading() {
               <Label>Pilih Kelas</Label>
               <Select value={selectedKelas} onValueChange={v => { setSelectedKelas(v); setSelectedMapel(''); }}>
                 <SelectTrigger><SelectValue placeholder="Pilih kelas..." /></SelectTrigger>
-                <SelectContent>{assignedKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama}</SelectItem>)}</SelectContent>
+                <SelectContent>{assignedKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.namaKelas}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2 flex-1">
@@ -180,7 +180,7 @@ export default function Grading() {
                       return (
                         <TableRow key={s.id}>
                           <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                          <TableCell className="font-medium">{s.nama}</TableCell>
+                          <TableCell className="font-medium">{s.namaLengkap}</TableCell>
                           <TableCell><Input type="number" min="0" max="100" className="text-center h-8" value={g.tugas} onChange={e => updateGrade(s.id, 'tugas', e.target.value)} /></TableCell>
                           <TableCell><Input type="number" min="0" max="100" className="text-center h-8" value={g.uts} onChange={e => updateGrade(s.id, 'uts', e.target.value)} /></TableCell>
                           <TableCell><Input type="number" min="0" max="100" className="text-center h-8" value={g.uas} onChange={e => updateGrade(s.id, 'uas', e.target.value)} /></TableCell>

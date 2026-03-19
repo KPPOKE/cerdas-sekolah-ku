@@ -108,7 +108,7 @@ export default function Attendance() {
               <Label>Pilih Kelas</Label>
               <Select value={selectedKelas} onValueChange={setSelectedKelas}>
                 <SelectTrigger><SelectValue placeholder="Pilih kelas..." /></SelectTrigger>
-                <SelectContent>{assignedKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama}</SelectItem>)}</SelectContent>
+                <SelectContent>{assignedKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.namaKelas}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
@@ -156,7 +156,7 @@ export default function Attendance() {
                     {siswaInKelas.map((s, i) => (
                       <TableRow key={s.id}>
                         <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                        <TableCell className="font-medium">{s.nama}</TableCell>
+                        <TableCell className="font-medium">{s.namaLengkap}</TableCell>
                         <TableCell className="text-center">
                           <Badge
                             className={`cursor-pointer select-none ${statusColors[localAttendance[s.id] || 'hadir']}`}

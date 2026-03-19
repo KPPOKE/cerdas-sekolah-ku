@@ -23,7 +23,7 @@ export default function GuruDashboard() {
   const jadwalHariIni = pengajaran.slice(0, 4).map((p, i) => ({
     jam: `${7 + i * 2}:00 - ${8 + i * 2}:30`,
     mapel: mapel.find(m => m.id === p.mataPelajaranId)?.nama || '-',
-    kelas: kelas.find(k => k.id === p.kelasId)?.nama || '-',
+    kelas: kelas.find(k => k.id === p.kelasId)?.namaKelas || '-',
   }));
 
   if (isLoading) {
@@ -90,7 +90,7 @@ export default function GuruDashboard() {
                 return (
                   <div key={k.id} className="p-3 rounded-lg border bg-card">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium">{k.nama}</p>
+                      <p className="font-medium">{k.namaKelas}</p>
                       <Badge variant="secondary">{jumlahSiswa} siswa</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">{mapelList.join(', ')}</p>
