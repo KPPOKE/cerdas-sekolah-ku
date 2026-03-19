@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -37,11 +37,13 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md shadow-lg border-border">
         <CardHeader className="text-center space-y-3">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary flex items-center justify-center">
-            <GraduationCap className="h-8 w-8 text-primary-foreground" />
-          </div>
+          <img
+            src="/Madrasah Ibtidaiyah Al-Haq emblem.png"
+            alt="Logo MI Al-Haq Jakarta"
+            className="mx-auto w-20 h-20 object-contain"
+          />
           <CardTitle className="font-heading text-2xl">Sistem Informasi Akademik</CardTitle>
-          <CardDescription>SD Negeri 01 — Masuk ke akun Anda</CardDescription>
+          <CardDescription>MI Al-Haq Jakarta — Masuk ke akun Anda</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

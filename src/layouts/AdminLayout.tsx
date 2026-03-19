@@ -5,7 +5,7 @@ import {
 } from '@/components/ui/sidebar';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, Settings, Database, LogOut, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Database, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const adminMenuItems = [
@@ -23,13 +23,15 @@ function AdminSidebarContent() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarContent>
         <div className="p-4 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center flex-shrink-0">
-            <GraduationCap className="h-4 w-4 text-sidebar-accent-foreground" />
-          </div>
+          <img
+            src="/Madrasah Ibtidaiyah Al-Haq emblem.png"
+            alt="Logo MI Al-Haq"
+            className={`object-contain flex-shrink-0 transition-all duration-200 ${collapsed ? 'w-8 h-8' : 'w-10 h-10'}`}
+          />
           {!collapsed && (
             <div>
-              <p className="text-sm font-heading font-bold text-sidebar-foreground">SIA SD Negeri 01</p>
-              <p className="text-xs text-sidebar-foreground/70">Panel Admin</p>
+              <p className="text-base font-heading font-bold text-sidebar-foreground leading-tight">SIA MI Al-Haq</p>
+              <p className="text-sm text-sidebar-foreground/70">Panel Admin</p>
             </div>
           )}
         </div>
