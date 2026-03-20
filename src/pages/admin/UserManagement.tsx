@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, KeyRound, Search, Inbox, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, KeyRound, Search, Inbox, Loader2, ChevronDown, ChevronUp, Upload } from 'lucide-react';
+import { useRef } from 'react';
 import { useApiData } from '@/hooks/useApiData';
 import api from '@/lib/axios';
 import { useToast } from '@/hooks/use-toast';
@@ -64,8 +65,36 @@ export default function UserManagement() {
   const { toast } = useToast();
 
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const guruFileRef = useRef<HTMLInputElement>(null);
+  const siswaFileRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = async (type: 'guru' | 'siswa', file: File) => {
+    if (!file.name.endsWith('.csv')) {
+      toast({ title: 'Error', description: 'File harus berformat .csv', variant: 'destructive' });
+      return;
+    }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post(`/import/${type}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast({ title: 'Berhasil', description: res.data.message });
+      if (type === 'guru') refetchGuru(); else refetchSiswa();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || `Gagal mengimpor data ${type}`;
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setImporting(false);
+      if (guruFileRef.current) guruFileRef.current.value = '';
+      if (siswaFileRef.current) siswaFileRef.current.value = '';
+    }
+  };
   const [guruSearch, setGuruSearch] = useState('');
   const [siswaSearch, setSiswaSearch] = useState('');
+  const [siswaKelasFilter, setSiswaKelasFilter] = useState('all');
 
   // Guru Dialog
   const [guruDialog, setGuruDialog] = useState(false);
@@ -175,7 +204,9 @@ export default function UserManagement() {
 
   const filteredSiswa = siswaList.filter(s => {
     const q = siswaSearch.toLowerCase();
-    return !q || s.namaLengkap.toLowerCase().includes(q) || (s.nisn && s.nisn.toLowerCase().includes(q));
+    const matchSearch = !q || s.namaLengkap.toLowerCase().includes(q) || (s.nisn && s.nisn.toLowerCase().includes(q));
+    const matchKelas = siswaKelasFilter === 'all' || s.kelasId === siswaKelasFilter;
+    return matchSearch && matchKelas;
   });
 
   // --- Helper ---
@@ -206,6 +237,10 @@ export default function UserManagement() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="Cari nama, NIK, NIP..." className="pl-8 w-full sm:w-64" value={guruSearch} onChange={e => setGuruSearch(e.target.value)} />
                 </div>
+                <input type="file" accept=".csv" ref={guruFileRef} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImport('guru', f); }} />
+                <Button size="sm" variant="outline" onClick={() => guruFileRef.current?.click()} disabled={importing}>
+                  <Upload className="h-4 w-4 mr-1" />{importing ? 'Mengimpor...' : 'Import CSV'}
+                </Button>
                 <Button size="sm" onClick={openAddGuru}><Plus className="h-4 w-4 mr-1" />Tambah Guru</Button>
               </div>
             </CardHeader>
@@ -255,11 +290,22 @@ export default function UserManagement() {
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
               <CardTitle className="font-heading text-lg">Data Siswa</CardTitle>
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+                <Select value={siswaKelasFilter} onValueChange={setSiswaKelasFilter}>
+                  <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Kelas</SelectItem>
+                    {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.namaKelas} ({siswaList.filter(s => s.kelasId === k.id).length})</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="Cari nama, NISN..." className="pl-8 w-full sm:w-64" value={siswaSearch} onChange={e => setSiswaSearch(e.target.value)} />
                 </div>
+                <input type="file" accept=".csv" ref={siswaFileRef} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImport('siswa', f); }} />
+                <Button size="sm" variant="outline" onClick={() => siswaFileRef.current?.click()} disabled={importing}>
+                  <Upload className="h-4 w-4 mr-1" />{importing ? 'Mengimpor...' : 'Import CSV'}
+                </Button>
                 <Button size="sm" onClick={openAddSiswa}><Plus className="h-4 w-4 mr-1" />Tambah Siswa</Button>
               </div>
             </CardHeader>
