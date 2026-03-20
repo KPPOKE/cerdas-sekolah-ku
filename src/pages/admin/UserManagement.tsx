@@ -292,8 +292,8 @@ export default function UserManagement() {
               <CardTitle className="font-heading text-lg">Data Siswa</CardTitle>
               <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
                 <Select value={siswaKelasFilter} onValueChange={setSiswaKelasFilter}>
-                  <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+                  <SelectContent position="popper" className="max-h-60 overflow-y-auto" sideOffset={4}>
                     <SelectItem value="all">Semua Kelas</SelectItem>
                     {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.namaKelas} ({siswaList.filter(s => s.kelasId === k.id).length})</SelectItem>)}
                   </SelectContent>
