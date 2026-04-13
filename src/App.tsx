@@ -17,6 +17,13 @@ import Grading from "./pages/guru/Grading";
 import StudentList from "./pages/guru/StudentList";
 import NotFound from "./pages/NotFound";
 
+import PPDBRegistration from "./pages/public/PPDBRegistration";
+import PPDBAnnouncement from "./pages/public/PPDBAnnouncement";
+import PPDBManagement from "./pages/admin/PPDBManagement";
+import ExtracurricularSetup from "./pages/admin/ExtracurricularSetup";
+import ExtracurricularMembers from "./pages/admin/ExtracurricularMembers";
+import ExtracurricularManagement from "./pages/guru/ExtracurricularManagement";
+
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role: 'admin' | 'guru' }) {
@@ -36,12 +43,17 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin' : '/guru'} replace /> : <Login />} />
+      <Route path="/ppdb/daftar" element={<PPDBRegistration />} />
+      <Route path="/ppdb/pengumuman" element={<PPDBAnnouncement />} />
 
       <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
         <Route index element={<AdminDashboard />} />
         <Route path="pengguna" element={<UserManagement />} />
         <Route path="akademik" element={<AcademicSetup />} />
         <Route path="data-master" element={<DataMaster />} />
+        <Route path="ppdb" element={<PPDBManagement />} />
+        <Route path="ekstrakurikuler" element={<ExtracurricularSetup />} />
+        <Route path="ekstrakurikuler-anggota" element={<ExtracurricularMembers />} />
       </Route>
 
       <Route path="/guru" element={<ProtectedRoute role="guru"><GuruLayout /></ProtectedRoute>}>
@@ -49,6 +61,7 @@ function AppRoutes() {
         <Route path="absensi" element={<Attendance />} />
         <Route path="penilaian" element={<Grading />} />
         <Route path="siswa" element={<StudentList />} />
+        <Route path="ekstrakurikuler" element={<ExtracurricularManagement />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

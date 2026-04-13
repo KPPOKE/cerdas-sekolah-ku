@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LayoutDashboard, ClipboardList, BookOpen, Users, LogOut, Loader2, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, BookOpen, Users, LogOut, Loader2, ShieldAlert, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/axios';
@@ -19,6 +19,7 @@ const guruMenuItems = [
   { title: 'Absensi', url: '/guru/absensi', icon: ClipboardList },
   { title: 'Penilaian', url: '/guru/penilaian', icon: BookOpen },
   { title: 'Daftar Siswa', url: '/guru/siswa', icon: Users },
+  { title: 'Ekstrakurikuler', url: '/guru/ekstrakurikuler', icon: Activity },
 ];
 
 function GuruSidebarContent() {

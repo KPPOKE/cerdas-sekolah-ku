@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,12 +86,12 @@ export default function Login() {
               {isLoading ? 'Memproses...' : 'Masuk'}
             </Button>
 
-            <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md space-y-1">
-              <p className="font-medium">Akun Demo:</p>
-              <p>Admin: <span className="font-mono">admin</span></p>
-              <p>Guru 1: <span className="font-mono">guru1</span> (Bu Siti)</p>
-              <p>Guru 2: <span className="font-mono">guru2</span> (Pak Budi)</p>
-              <p className="text-xs italic">Password: password</p>
+            <div className="mt-4 pt-4 border-t text-center space-y-2">
+              <p className="text-sm font-medium">Layanan Publik (PPDB)</p>
+              <div className="flex justify-center space-x-4 text-sm">
+                <Link to="/ppdb/daftar" className="text-primary hover:underline">Pendaftaran Siswa Baru</Link>
+                <Link to="/ppdb/pengumuman" className="text-primary hover:underline">Cek Kelulusan</Link>
+              </div>
             </div>
           </form>
         </CardContent>

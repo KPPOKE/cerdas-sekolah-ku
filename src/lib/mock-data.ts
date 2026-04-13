@@ -54,6 +54,9 @@ export const mockAbsensi: Absensi[] = [];
 
 export const mockNilai: Nilai[] = [];
 
+
+// Ekstrakurikuler and PPDB data now served from Laravel API (no longer mocked)
+
 // Helper to get/set data from localStorage with fallback to mock
 export function getData<T>(key: string, fallback: T[]): T[] {
   const stored = localStorage.getItem(key);

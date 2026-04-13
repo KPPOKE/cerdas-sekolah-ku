@@ -131,3 +131,51 @@ export interface Nilai {
   uas: number;
   rataRata: number;
 }
+
+export type Hari = 'Senin' | 'Selasa' | 'Rabu' | 'Kamis' | 'Jumat' | 'Sabtu' | 'Minggu';
+
+export interface Ekstrakurikuler {
+  id: string;
+  nama: string;
+  hari: Hari;
+  guruId: string | null;
+  deskripsi?: string;
+}
+
+export interface PesertaEkstrakurikuler {
+  id: string;
+  ekstrakurikulerId: string;
+  siswaId: string;
+  tanggalDaftar: string;
+}
+
+export interface AbsensiEkstrakurikuler {
+  id: string;
+  ekstrakurikulerId: string;
+  siswaId: string;
+  tanggal: string;
+  status: StatusKehadiran;
+  keterangan?: string;
+}
+
+export type StatusPPDB = 'Pending' | 'Selesai Verifikasi' | 'Diterima' | 'Ditolak';
+
+export interface PendaftarPPDB {
+  id: string;
+  nomorPendaftaran: string;
+  namaLengkap: string;
+  nik: string;
+  tempatLahir: string;
+  tanggalLahir: string;
+  jenisKelamin: string;
+  alamat: string;
+  namaAyahKandung: string;
+  namaIbuKandung: string;
+  noTelepon: string;
+  status: StatusPPDB;
+  tanggalDaftar: string;
+  pasFotoUrl?: string;
+  kartuKeluargaUrl?: string;
+  aktaKelahiranUrl?: string;
+  catatanAdmin?: string;
+}

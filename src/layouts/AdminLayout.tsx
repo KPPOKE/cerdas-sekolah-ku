@@ -5,7 +5,7 @@ import {
 } from '@/components/ui/sidebar';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, Settings, Database, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Database, LogOut, ClipboardList, Activity, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const adminMenuItems = [
@@ -13,6 +13,9 @@ const adminMenuItems = [
   { title: 'Manajemen Pengguna', url: '/admin/pengguna', icon: Users },
   { title: 'Pengaturan Akademik', url: '/admin/akademik', icon: Settings },
   { title: 'Data Master', url: '/admin/data-master', icon: Database },
+  { title: 'Manajemen PPDB', url: '/admin/ppdb', icon: ClipboardList },
+  { title: 'Setup Ekstrakurikuler', url: '/admin/ekstrakurikuler', icon: Activity },
+  { title: 'Anggota Ekskul', url: '/admin/ekstrakurikuler-anggota', icon: UsersRound },
 ];
 
 function AdminSidebarContent() {
