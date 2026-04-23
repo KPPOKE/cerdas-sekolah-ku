@@ -5,17 +5,19 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
-import AdminLayout from "./layouts/AdminLayout";
-import AdminDashboard from "./pages/admin/Dashboard";
-import UserManagement from "./pages/admin/UserManagement";
-import AcademicSetup from "./pages/admin/AcademicSetup";
-import DataMaster from "./pages/admin/DataMaster";
-import GuruLayout from "./layouts/GuruLayout";
-import GuruDashboard from "./pages/guru/Dashboard";
-import Attendance from "./pages/guru/Attendance";
-import Grading from "./pages/guru/Grading";
-import StudentList from "./pages/guru/StudentList";
+import AdminLayout from "@/layouts/AdminLayout";
+import AdminDashboard from "@/pages/admin/Dashboard";
+import UserManagement from "@/pages/admin/UserManagement";
+import AcademicSetup from "@/pages/admin/AcademicSetup";
+import DataMaster from "@/pages/admin/DataMaster";
+import GuruLayout from "@/layouts/GuruLayout";
+import GuruDashboard from "@/pages/guru/Dashboard";
+import Attendance from "@/pages/guru/Attendance";
+import Grading from "@/pages/guru/Grading";
+import StudentList from "@/pages/guru/StudentList";
 import NotFound from "./pages/NotFound";
+import PelatihLayout from "@/layouts/PelatihLayout";
+import PelatihDashboard from "@/pages/pelatih/Dashboard";
 
 import PPDBRegistration from "./pages/public/PPDBRegistration";
 import PPDBAnnouncement from "./pages/public/PPDBAnnouncement";
@@ -26,10 +28,15 @@ import ExtracurricularManagement from "./pages/guru/ExtracurricularManagement";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children, role }: { children: React.ReactNode; role: 'admin' | 'guru' }) {
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
   const { user, isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/" replace />;
-  if (user?.role !== role) return <Navigate to={user?.role === 'admin' ? '/admin' : '/guru'} replace />;
+  if (!allowedRoles.includes(user?.role || '')) {
+    if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+    if (user?.role === 'guru') return <Navigate to="/guru" replace />;
+    if (user?.role === 'pelatih') return <Navigate to="/pelatih" replace />;
+    return <Navigate to="/" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -42,11 +49,15 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin' : '/guru'} replace /> : <Login />} />
+      <Route path="/" element={
+        isAuthenticated 
+          ? <Navigate to={user?.role === 'admin' ? '/admin' : user?.role === 'pelatih' ? '/pelatih' : '/guru'} replace /> 
+          : <Login />
+      } />
       <Route path="/ppdb/daftar" element={<PPDBRegistration />} />
       <Route path="/ppdb/pengumuman" element={<PPDBAnnouncement />} />
 
-      <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
+      <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
         <Route index element={<AdminDashboard />} />
         <Route path="pengguna" element={<UserManagement />} />
         <Route path="akademik" element={<AcademicSetup />} />
@@ -56,12 +67,16 @@ function AppRoutes() {
         <Route path="ekstrakurikuler-anggota" element={<ExtracurricularMembers />} />
       </Route>
 
-      <Route path="/guru" element={<ProtectedRoute role="guru"><GuruLayout /></ProtectedRoute>}>
+      <Route path="/guru" element={<ProtectedRoute allowedRoles={['guru']}><GuruLayout /></ProtectedRoute>}>
         <Route index element={<GuruDashboard />} />
         <Route path="absensi" element={<Attendance />} />
         <Route path="penilaian" element={<Grading />} />
         <Route path="siswa" element={<StudentList />} />
         <Route path="ekstrakurikuler" element={<ExtracurricularManagement />} />
+      </Route>
+
+      <Route path="/pelatih" element={<ProtectedRoute allowedRoles={['pelatih']}><PelatihLayout /></ProtectedRoute>}>
+        <Route index element={<PelatihDashboard />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
