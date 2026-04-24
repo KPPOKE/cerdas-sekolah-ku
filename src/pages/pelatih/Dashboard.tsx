@@ -26,13 +26,22 @@ interface Anggota {
 interface Siswa {
   id: string;
   namaLengkap: string;
+  kelasId: string;
+}
+
+interface Kelas {
+  id: string;
+  namaKelas: string;
+  tingkat: number;
 }
 
 export default function PelatihDashboard() {
   const { user } = useAuth();
   const [ekskul, setEkskul] = useState<Ekskul | null>(null);
   const [anggota, setAnggota] = useState<Anggota[]>([]);
-  const [availableSiswa, setAvailableSiswa] = useState<Siswa[]>([]);
+  const [allSiswa, setAllSiswa] = useState<Siswa[]>([]);
+  const [kelasList, setKelasList] = useState<Kelas[]>([]);
+  const [selectedKelasId, setSelectedKelasId] = useState<string>('all');
   const [selectedSiswaId, setSelectedSiswaId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -52,22 +61,27 @@ export default function PelatihDashboard() {
         const anggotaRes = await api.get(`/ekstrakurikuler-anggota?ekstrakurikuler_id=${myEkskul.id}`);
         setAnggota(anggotaRes.data);
 
-        // 3. Get all students for the "Add" dropdown
-        const siswaRes = await api.get('/siswa');
+        // 3. Get Classes and Students
+        const [kelasRes, siswaRes] = await Promise.all([
+          api.get('/kelas'),
+          api.get('/siswa')
+        ]);
+        
+        setKelasList(Array.isArray(kelasRes.data) ? kelasRes.data : (kelasRes.data.data || []));
+        
         // Filter out students already in this ekskul
         const currentMemberIds = anggotaRes.data.map((a: Anggota) => a.siswa_id);
-        
-        // Handle different backend response structures
         const rawSiswa = Array.isArray(siswaRes.data) ? siswaRes.data : (siswaRes.data.data || []);
         
-        const filteredSiswa = rawSiswa.filter((s: any) => !currentMemberIds.includes(s.id));
+        const mappedSiswa = rawSiswa
+          .filter((s: any) => !currentMemberIds.includes(s.id))
+          .map((s: any) => ({
+            id: s.id,
+            namaLengkap: s.nama_lengkap || s.namaLengkap || 'Tanpa Nama',
+            kelasId: s.kelas_id || s.kelasId
+          }));
         
-        const mappedSiswa = filteredSiswa.map((s: any) => ({
-          id: s.id,
-          namaLengkap: s.nama_lengkap || s.namaLengkap || 'Tanpa Nama'
-        }));
-        
-        setAvailableSiswa(mappedSiswa);
+        setAllSiswa(mappedSiswa);
       }
     } catch (err: any) {
       console.error('Error loading coach data:', err);
@@ -111,6 +125,11 @@ export default function PelatihDashboard() {
     }
   };
 
+  const filteredSiswa = (selectedKelasId === 'all' 
+    ? allSiswa 
+    : allSiswa.filter(s => s.kelasId === selectedKelasId))
+    .sort((a, b) => a.namaLengkap.localeCompare(b.namaLengkap));
+
   if (isLoading) {
     return (
       <div className="flex h-[400px] items-center justify-center">
@@ -141,7 +160,10 @@ export default function PelatihDashboard() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full md:w-auto">
+            <Button className="w-full md:w-auto" onClick={() => {
+              setSelectedKelasId('all');
+              setSelectedSiswaId('');
+            }}>
               <UserPlus className="h-4 w-4 mr-2" />
               Tambah Siswa
             </Button>
@@ -151,20 +173,43 @@ export default function PelatihDashboard() {
               <DialogTitle>Tambah Anggota Baru</DialogTitle>
               <CardDescription>Pilih siswa dari daftar untuk ditambahkan ke {ekskul.nama}.</CardDescription>
             </DialogHeader>
-            <div className="py-4">
-              <Select value={selectedSiswaId} onValueChange={setSelectedSiswaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Cari Nama Siswa..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSiswa.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.namaLengkap}</SelectItem>
-                  ))}
-                  {availableSiswa.length === 0 && (
-                    <p className="p-2 text-sm text-center text-muted-foreground">Semua siswa sudah terdaftar atau tidak ada data.</p>
-                  )}
-                </SelectContent>
-              </Select>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Filter Per Kelas</label>
+                <Select value={selectedKelasId} onValueChange={(val) => {
+                  setSelectedKelasId(val);
+                  setSelectedSiswaId('');
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Kelas..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="max-h-[200px] overflow-y-auto">
+                    <SelectItem value="all">Semua Kelas</SelectItem>
+                    {kelasList.map(k => (
+                      <SelectItem key={k.id} value={k.id}>{k.namaKelas}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Pilih Nama Siswa</label>
+                <Select value={selectedSiswaId} onValueChange={setSelectedSiswaId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Cari Nama Siswa..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="max-h-[200px] overflow-y-auto">
+                    {filteredSiswa.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.namaLengkap}</SelectItem>
+                    ))}
+                    {filteredSiswa.length === 0 && (
+                      <p className="p-2 text-sm text-center text-muted-foreground">
+                        {selectedKelasId === 'all' ? 'Tidak ada siswa yang tersedia.' : 'Tidak ada siswa di kelas ini yang tersedia.'}
+                      </p>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>

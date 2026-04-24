@@ -9,6 +9,16 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import api from '@/lib/axios';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Guru {
   id: string;
@@ -41,6 +51,10 @@ export default function ExtracurricularSetup() {
     deskripsi: ''
   });
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
       const [ekskulRes, usersRes] = await Promise.all([
@@ -59,23 +73,60 @@ export default function ExtracurricularSetup() {
     loadData();
   }, [loadData]);
 
-  const handleAdd = async () => {
+  const handleSubmit = async () => {
     if (!newEkskul.nama || !newEkskul.guru_id) {
       toast.error('Nama ekskul dan guru pembina wajib diisi');
       return;
     }
     setIsSubmitting(true);
     try {
-      await api.post('/ekstrakurikuler', newEkskul);
-      toast.success('Ekstrakurikuler berhasil ditambahkan');
+      if (editingId) {
+        await api.put(`/ekstrakurikuler/${editingId}`, newEkskul);
+        toast.success('Ekstrakurikuler berhasil diperbarui');
+      } else {
+        await api.post('/ekstrakurikuler', newEkskul);
+        toast.success('Ekstrakurikuler berhasil ditambahkan');
+      }
       setIsAddOpen(false);
+      setEditingId(null);
       setNewEkskul({ nama: '', hari: 'Senin', guru_id: '', deskripsi: '' });
       loadData();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal menambahkan ekskul');
+      toast.error(error.response?.data?.message || 'Gagal menyimpan data');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEditClick = (ekskul: Ekskul) => {
+    setEditingId(ekskul.id);
+    setNewEkskul({
+      nama: ekskul.nama,
+      hari: ekskul.hari,
+      guru_id: ekskul.guru_id,
+      deskripsi: ekskul.deskripsi || ''
+    });
+    setIsAddOpen(true);
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setDeleteId(id);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await api.delete(`/ekstrakurikuler/${deleteId}`);
+      toast.success('Ekstrakurikuler berhasil dihapus');
+      loadData();
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Gagal menghapus ekskul');
+    } finally {
+      setIsDeleteAlertOpen(false);
+      setDeleteId(null);
     }
   };
 
@@ -112,7 +163,11 @@ export default function ExtracurricularSetup() {
           <h2 className="text-2xl font-bold tracking-tight">Setup Ekstrakurikuler</h2>
           <p className="text-muted-foreground">Kelola master data ekstrakurikuler, jadwal hari, dan guru pembina.</p>
         </div>
-        <Button onClick={() => setIsAddOpen(true)}>
+        <Button onClick={() => {
+          setEditingId(null);
+          setNewEkskul({ nama: '', hari: 'Senin', guru_id: '', deskripsi: '' });
+          setIsAddOpen(true);
+        }}>
           <Plus className="mr-2 h-4 w-4" /> Tambah Ekskul
         </Button>
       </div>
@@ -148,10 +203,20 @@ export default function ExtracurricularSetup() {
                     <td className="p-3">{ekskul.guru?.nama || '-'}</td>
                     <td className="p-3 text-muted-foreground">{ekskul.deskripsi || '-'}</td>
                     <td className="p-3 text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        onClick={() => handleEditClick(ekskul)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteClick(ekskul.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </td>
@@ -163,11 +228,16 @@ export default function ExtracurricularSetup() {
         </CardContent>
       </Card>
 
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+       <Dialog open={isAddOpen} onOpenChange={(val) => {
+          setIsAddOpen(val);
+          if (!val) setEditingId(null);
+        }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tambah Ekstrakurikuler</DialogTitle>
-            <DialogDescription>Masukkan detail kegiatan ekstrakurikuler baru.</DialogDescription>
+            <DialogTitle>{editingId ? 'Edit' : 'Tambah'} Ekstrakurikuler</DialogTitle>
+            <DialogDescription>
+              {editingId ? 'Perbarui detail kegiatan ekstrakurikuler ini.' : 'Masukkan detail kegiatan ekstrakurikuler baru.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -223,8 +293,8 @@ export default function ExtracurricularSetup() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddOpen(false)}>Batal</Button>
-            <Button onClick={handleAdd} disabled={isSubmitting}>
-              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Menyimpan...' : (editingId ? 'Perbarui' : 'Simpan')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -262,6 +332,23 @@ export default function ExtracurricularSetup() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Ekstrakurikuler?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Ekstrakurikuler yang masih memiliki anggota tidak dapat dihapus.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
