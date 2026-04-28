@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 
 interface Ekskul {
   id: string;
@@ -12,10 +13,10 @@ interface Ekskul {
 
 interface Anggota {
   id: string;
-  ekstrakurikuler_id: string;
-  siswa_id: string;
-  created_at: string;
-  siswa?: { id: string; nama_lengkap: string; status: string };
+  ekstrakurikulerId: string;
+  siswaId: string;
+  createdAt: string;
+  siswa?: { id: string; namaLengkap: string; status: string };
   ekstrakurikuler?: { id: string; nama: string };
 }
 
@@ -30,11 +31,13 @@ export default function ExtracurricularMembers() {
         api.get('/ekstrakurikuler'),
         api.get('/ekstrakurikuler-anggota'),
       ]);
-      setEkstrakurikuler(ekskulRes.data);
-      setAnggota(anggotaRes.data);
+      setEkstrakurikuler(Array.isArray(ekskulRes.data) ? ekskulRes.data : ekskulRes.data.data || []);
+      setAnggota(Array.isArray(anggotaRes.data) ? anggotaRes.data : anggotaRes.data.data || []);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal memuat data');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal memuat data');
+      }
     }
   }, []);
 
@@ -44,7 +47,7 @@ export default function ExtracurricularMembers() {
 
   const filteredAnggota = selectedEkskul === 'all' 
     ? anggota 
-    : anggota.filter(a => a.ekstrakurikuler_id === selectedEkskul);
+    : anggota.filter(a => a.ekstrakurikulerId === selectedEkskul);
 
   return (
     <div className="space-y-6">
@@ -95,12 +98,12 @@ export default function ExtracurricularMembers() {
                   </tr>
                 ) : filteredAnggota.map((a) => (
                   <tr key={a.id} className="hover:bg-muted/50">
-                    <td className="p-3 font-medium">{a.siswa?.nama_lengkap || '-'}</td>
+                    <td className="p-3 font-medium">{a.siswa?.namaLengkap || '-'}</td>
                     <td className="p-3">
                       <Badge variant="outline" className="bg-primary/5">{a.ekstrakurikuler?.nama || '-'}</Badge>
                     </td>
                     <td className="p-3 text-muted-foreground">
-                      {new Date(a.created_at).toLocaleDateString('id-ID')}
+                      {new Date(a.createdAt).toLocaleDateString('id-ID')}
                     </td>
                     <td className="p-3">
                       <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">

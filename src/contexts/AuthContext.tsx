@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User } from '@/types';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 
 interface AuthContextType {
   user: User | null;
@@ -31,7 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(response.data.user);
           localStorage.setItem('currentUser', JSON.stringify(response.data.user));
         } catch (error) {
-          console.error("Session expired or invalid token", error);
+          if (!isUnauthorizedError(error)) {
+            console.error("Session expired or invalid token", error);
+          }
           setUser(null);
           localStorage.removeItem('token');
           localStorage.removeItem('currentUser');
@@ -62,7 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.post('/logout');
     } catch (error) {
-      console.error('Logout failed:', error);
+      if (!isUnauthorizedError(error)) {
+        console.error('Logout failed:', error);
+      }
     } finally {
       setUser(null);
       localStorage.removeItem('token');

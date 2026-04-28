@@ -158,24 +158,24 @@ export interface AbsensiEkstrakurikuler {
   keterangan?: string;
 }
 
-export type StatusPPDB = 'Pending' | 'Selesai Verifikasi' | 'Diterima' | 'Ditolak';
+export type StatusPPDB = 'pending' | 'diterima' | 'ditolak';
 
 export interface PendaftarPPDB {
   id: string;
-  nomorPendaftaran: string;
   namaLengkap: string;
   nik: string;
   tempatLahir: string;
   tanggalLahir: string;
   jenisKelamin: string;
+  namaAyah: string;
+  namaIbu: string;
+  pekerjaanAyah?: string | null;
+  pekerjaanIbu?: string | null;
+  noWa: string;
   alamat: string;
-  namaAyahKandung: string;
-  namaIbuKandung: string;
-  noTelepon: string;
   status: StatusPPDB;
-  tanggalDaftar: string;
-  pasFotoUrl?: string;
-  kartuKeluargaUrl?: string;
-  aktaKelahiranUrl?: string;
-  catatanAdmin?: string;
+  berkasPasFoto?: string | null;
+  berkasKk?: string | null;
+  berkasAktaKelahiran?: string | null;
+  createdAt: string;
 }

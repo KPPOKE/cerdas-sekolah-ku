@@ -9,24 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from 'sonner';
 import { FileText, CheckCircle, XCircle, Search, Image, UserPlus } from 'lucide-react';
 import api from '@/lib/axios';
-
-interface Pendaftar {
-  id: string;
-  nik: string;
-  nama_lengkap: string;
-  tempat_lahir: string;
-  tanggal_lahir: string;
-  jenis_kelamin: string;
-  nama_ayah: string;
-  nama_ibu: string;
-  no_wa: string;
-  alamat: string;
-  berkas_pas_foto: string | null;
-  berkas_kk: string | null;
-  berkas_akta_kelahiran: string | null;
-  status: 'pending' | 'diterima' | 'ditolak';
-  created_at: string;
-}
+import { isUnauthorizedError } from '@/lib/api-errors';
+import type { PendaftarPPDB } from '@/types';
 
 interface Kelas {
   id: string;
@@ -35,12 +19,12 @@ interface Kelas {
 }
 
 export default function PPDBManagement() {
-  const [pendaftars, setPendaftars] = useState<Pendaftar[]>([]);
+  const [pendaftars, setPendaftars] = useState<PendaftarPPDB[]>([]);
   const [kelasData, setKelasData] = useState<Kelas[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Dialog State
-  const [selectedPendaftar, setSelectedPendaftar] = useState<Pendaftar | null>(null);
+  const [selectedPendaftar, setSelectedPendaftar] = useState<PendaftarPPDB | null>(null);
   const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
   const [selectedKelasId, setSelectedKelasId] = useState('');
 
@@ -65,12 +49,14 @@ export default function PPDBManagement() {
         api.get('/ppdb'),
         api.get('/kelas'),
       ]);
-      setPendaftars(ppdbRes.data);
+      setPendaftars(Array.isArray(ppdbRes.data) ? ppdbRes.data : ppdbRes.data.data || []);
       // KelasResource::collection wraps in { data: [...] }
       setKelasData(Array.isArray(kelasRes.data) ? kelasRes.data : kelasRes.data.data || []);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal memuat data');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal memuat data');
+      }
     }
   }, []);
 
@@ -88,7 +74,9 @@ export default function PPDBManagement() {
       loadData();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal memperbarui status');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal memperbarui status');
+      }
     }
   };
 
@@ -111,7 +99,9 @@ export default function PPDBManagement() {
       loadData();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal menerima siswa');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal menerima siswa');
+      }
     }
   };
 
@@ -124,7 +114,7 @@ export default function PPDBManagement() {
   };
 
   const filteredData = pendaftars.filter(p => 
-    p.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.nik.includes(searchTerm)
   );
 
@@ -178,23 +168,23 @@ export default function PPDBManagement() {
                   <tr key={pendaftar.id} className="hover:bg-muted/50">
                     <td className="p-3">
                       <div className="text-xs text-muted-foreground">
-                        {new Date(pendaftar.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        {new Date(pendaftar.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </div>
                     </td>
                     <td className="p-3">
-                      <div className="font-medium">{pendaftar.nama_lengkap}</div>
-                      <div className="text-xs text-muted-foreground">NIK: {pendaftar.nik} | JK: {pendaftar.jenis_kelamin}</div>
-                      <div className="text-xs text-muted-foreground">Lahir: {pendaftar.tempat_lahir}, {pendaftar.tanggal_lahir}</div>
+                      <div className="font-medium">{pendaftar.namaLengkap}</div>
+                      <div className="text-xs text-muted-foreground">NIK: {pendaftar.nik} | JK: {pendaftar.jenisKelamin}</div>
+                      <div className="text-xs text-muted-foreground">Lahir: {pendaftar.tempatLahir}, {pendaftar.tanggalLahir}</div>
                     </td>
                     <td className="p-3">
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" title="Pas Foto" onClick={() => openPreview(pendaftar.berkas_pas_foto, 'Pas Foto - ' + pendaftar.nama_lengkap)}>
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" title="Pas Foto" onClick={() => openPreview(pendaftar.berkasPasFoto ?? null, 'Pas Foto - ' + pendaftar.namaLengkap)}>
                           <Image className="w-3 h-3 mr-1" /> Foto
                         </Button>
-                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" title="Kartu Keluarga" onClick={() => openPreview(pendaftar.berkas_kk, 'Kartu Keluarga - ' + pendaftar.nama_lengkap)}>
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" title="Kartu Keluarga" onClick={() => openPreview(pendaftar.berkasKk ?? null, 'Kartu Keluarga - ' + pendaftar.namaLengkap)}>
                           <FileText className="w-3 h-3 mr-1" /> KK
                         </Button>
-                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" title="Akta Kelahiran" onClick={() => openPreview(pendaftar.berkas_akta_kelahiran, 'Akta Kelahiran - ' + pendaftar.nama_lengkap)}>
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" title="Akta Kelahiran" onClick={() => openPreview(pendaftar.berkasAktaKelahiran ?? null, 'Akta Kelahiran - ' + pendaftar.namaLengkap)}>
                           <FileText className="w-3 h-3 mr-1" /> Akta
                         </Button>
                       </div>
@@ -248,7 +238,7 @@ export default function PPDBManagement() {
           <DialogHeader>
             <DialogTitle>Terima Siswa & Penempatan Kelas</DialogTitle>
             <DialogDescription>
-              Menyalin data <strong>{selectedPendaftar?.nama_lengkap}</strong> (NIK: {selectedPendaftar?.nik}) ke Data Akademik Aktif.
+              Menyalin data <strong>{selectedPendaftar?.namaLengkap}</strong> (NIK: {selectedPendaftar?.nik}) ke Data Akademik Aktif.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">

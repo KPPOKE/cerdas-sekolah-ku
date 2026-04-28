@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import type { PengajaranGuru, Kelas, Siswa, Absensi, StatusKehadiran } from '@/t
 import { Save, Inbox, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 
 const statusColors: Record<StatusKehadiran, string> = {
   hadir: 'bg-primary/10 text-primary border-primary/30',
@@ -43,19 +44,61 @@ export default function Attendance() {
   const [selectedKelas, setSelectedKelas] = useState('');
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [localAttendance, setLocalAttendance] = useState<Record<string, StatusKehadiran>>({});
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const siswaInKelas = useMemo(() => allSiswa.filter(s => s.kelasId === selectedKelas), [selectedKelas, allSiswa]);
 
-  // Load existing attendance when kelas/tanggal changes
-  useMemo(() => {
-    if (!selectedKelas || !tanggal) return;
-    // Default all to hadir
-    const existing: Record<string, StatusKehadiran> = {};
-    siswaInKelas.forEach(s => {
-      existing[s.id] = 'hadir';
-    });
-    setLocalAttendance(existing);
-  }, [selectedKelas, tanggal, siswaInKelas.length]);
+  useEffect(() => {
+    if (!selectedKelas || !tanggal) {
+      setLocalAttendance({});
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadAttendance = async () => {
+      const existing: Record<string, StatusKehadiran> = {};
+      siswaInKelas.forEach((siswa) => {
+        existing[siswa.id] = 'hadir';
+      });
+
+      setIsLoadingAttendance(true);
+
+      try {
+        const response = await api.get('/absensi', {
+          params: {
+            kelas_id: selectedKelas,
+            tanggal,
+          },
+        });
+
+        const absensiData: Absensi[] = Array.isArray(response.data) ? response.data : response.data.data || [];
+        absensiData.forEach((item) => {
+          existing[item.siswaId] = item.status;
+        });
+
+        if (isMounted) {
+          setLocalAttendance(existing);
+        }
+      } catch (err) {
+        if (isMounted && !isUnauthorizedError(err)) {
+          setLocalAttendance(existing);
+          toast({ title: 'Gagal', description: 'Gagal memuat absensi', variant: 'destructive' });
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingAttendance(false);
+        }
+      }
+    };
+
+    loadAttendance();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedKelas, tanggal, siswaInKelas, toast]);
 
   const toggleStatus = (siswaId: string) => {
     const order: StatusKehadiran[] = ['hadir', 'alfa', 'sakit', 'izin'];
@@ -65,11 +108,29 @@ export default function Attendance() {
   };
 
   const saveAttendance = async () => {
+    if (!selectedKelas || siswaInKelas.length === 0) {
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      // For now save locally via toast, backend absensi API can be added later
+      await api.post('/absensi/batch', {
+        kelas_id: selectedKelas,
+        tanggal,
+        absensi: siswaInKelas.map((siswa) => ({
+          siswa_id: siswa.id,
+          status: localAttendance[siswa.id] || 'hadir',
+          keterangan: null,
+        })),
+      });
+
       toast({ title: 'Berhasil', description: 'Absensi berhasil disimpan' });
     } catch (err) {
-      toast({ title: 'Gagal', description: 'Gagal menyimpan absensi', variant: 'destructive' });
+      if (!isUnauthorizedError(err)) {
+        toast({ title: 'Gagal', description: 'Gagal menyimpan absensi', variant: 'destructive' });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -135,10 +196,17 @@ export default function Attendance() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="font-heading text-lg">Daftar Kehadiran</CardTitle>
-              <Button size="sm" onClick={saveAttendance}><Save className="h-4 w-4 mr-1" />Simpan</Button>
+              <Button size="sm" onClick={saveAttendance} disabled={isLoadingAttendance || isSaving}>
+                {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                {isSaving ? 'Menyimpan...' : 'Simpan'}
+              </Button>
             </CardHeader>
             <CardContent>
-              {siswaInKelas.length === 0 ? (
+              {isLoadingAttendance ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : siswaInKelas.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <Inbox className="h-12 w-12 mb-3 opacity-40" />
                   <p className="text-sm">Tidak ada siswa di kelas ini</p>

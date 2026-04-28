@@ -64,9 +64,9 @@ export default function PelatihLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/', { replace: true });
   };
 
   return (

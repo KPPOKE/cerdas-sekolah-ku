@@ -27,7 +27,7 @@ export default function Login() {
     setIsLoading(false);
     if (success) {
       const stored = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      navigate(stored.role === 'admin' ? '/admin' : '/guru');
+      navigate(stored.role === 'admin' ? '/admin' : stored.role === 'pelatih' ? '/pelatih' : '/guru');
     } else {
       setError('Username atau password salah.');
     }

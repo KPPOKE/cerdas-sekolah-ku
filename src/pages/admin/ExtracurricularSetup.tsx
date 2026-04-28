@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +31,7 @@ interface Ekskul {
   id: string;
   nama: string;
   hari: string;
-  guru_id: string;
+  guruId: string;
   deskripsi: string | null;
   guru?: Guru;
 }
@@ -61,11 +62,13 @@ export default function ExtracurricularSetup() {
         api.get('/ekstrakurikuler'),
         api.get('/users-guru'),
       ]);
-      setEkstrakurikuler(ekskulRes.data);
+      setEkstrakurikuler(Array.isArray(ekskulRes.data) ? ekskulRes.data : ekskulRes.data.data || []);
       setGurus(usersRes.data);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal memuat data');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal memuat data');
+      }
     }
   }, []);
 
@@ -93,7 +96,9 @@ export default function ExtracurricularSetup() {
       loadData();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal menyimpan data');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal menyimpan data');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -104,7 +109,7 @@ export default function ExtracurricularSetup() {
     setNewEkskul({
       nama: ekskul.nama,
       hari: ekskul.hari,
-      guru_id: ekskul.guru_id,
+      guru_id: ekskul.guruId,
       deskripsi: ekskul.deskripsi || ''
     });
     setIsAddOpen(true);
@@ -123,7 +128,9 @@ export default function ExtracurricularSetup() {
       loadData();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal menghapus ekskul');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal menghapus ekskul');
+      }
     } finally {
       setIsDeleteAlertOpen(false);
       setDeleteId(null);
@@ -144,7 +151,9 @@ export default function ExtracurricularSetup() {
       setNewPelatih({ nama: '', username: '' });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal menambahkan pelatih');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal menambahkan pelatih');
+      }
     }
   };
 

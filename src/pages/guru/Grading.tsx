@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiData } from '@/hooks/useApiData';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 import type { PengajaranGuru, Kelas, Siswa, MataPelajaran } from '@/types';
 import { Save, FileDown, FileSpreadsheet, Inbox, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -77,7 +78,9 @@ export default function Grading() {
           setLocalGrades(grades);
         }
       } catch (err) {
-        console.error("Failed to fetch grades", err);
+        if (!isUnauthorizedError(err)) {
+          console.error("Failed to fetch grades", err);
+        }
       } finally {
         if (isMounted) setIsLoadingGrades(false);
       }

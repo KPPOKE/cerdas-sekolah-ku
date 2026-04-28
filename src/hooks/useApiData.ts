@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 
 interface UseApiDataResult<T> {
   data: T[];
@@ -22,6 +23,11 @@ export function useApiData<T>(endpoint: string): UseApiDataResult<T> {
       const result = response.data?.data ?? response.data ?? [];
       setData(Array.isArray(result) ? result : []);
     } catch (err: any) {
+      if (isUnauthorizedError(err)) {
+        setData([]);
+        setError(null);
+        return;
+      }
       console.error(`Failed to fetch ${endpoint}:`, err);
       setError(err.message || 'Failed to fetch data');
       setData([]);

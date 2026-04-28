@@ -7,19 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import api from '@/lib/axios';
 import { Search } from 'lucide-react';
-
-interface PpdbResult {
-  id: string;
-  nik: string;
-  nama_lengkap: string;
-  status: string;
-  created_at: string;
-}
+import type { PendaftarPPDB } from '@/types';
 
 export default function PPDBAnnouncement() {
   const navigate = useNavigate();
   const [nik, setNik] = useState('');
-  const [result, setResult] = useState<PpdbResult | null | 'NOT_FOUND'>(null);
+  const [result, setResult] = useState<PendaftarPPDB | null | 'NOT_FOUND'>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -97,7 +90,7 @@ export default function PPDBAnnouncement() {
               
               <div className="grid grid-cols-3 gap-2 text-sm border-b pb-2">
                 <span className="text-muted-foreground">Nama Siswa</span>
-                <span className="col-span-2 font-medium">{result.nama_lengkap}</span>
+                <span className="col-span-2 font-medium">{result.namaLengkap}</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-sm border-b pb-2">
                 <span className="text-muted-foreground">NIK</span>
@@ -106,7 +99,7 @@ export default function PPDBAnnouncement() {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <span className="text-muted-foreground">Tanggal Daftar</span>
                 <span className="col-span-2 font-medium">
-                  {new Date(result.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(result.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </span>
               </div>
             </div>

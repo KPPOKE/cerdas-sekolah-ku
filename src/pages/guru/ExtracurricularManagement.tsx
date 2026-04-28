@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 
 interface Ekskul {
   id: string;
@@ -15,9 +16,9 @@ interface Ekskul {
 
 interface Anggota {
   id: string;
-  ekstrakurikuler_id: string;
-  siswa_id: string;
-  siswa?: { id: string; nama_lengkap: string; status: string };
+  ekstrakurikulerId: string;
+  siswaId: string;
+  siswa?: { id: string; namaLengkap: string; status: string };
 }
 
 export default function ExtracurricularManagement() {
@@ -34,12 +35,12 @@ export default function ExtracurricularManagement() {
       
       // Get ekskul assigned to this guru
       const ekskulRes = await api.get('/ekstrakurikuler', { params: { guru_id: currentUser.id } });
-      let ekskulList = ekskulRes.data;
+      let ekskulList = Array.isArray(ekskulRes.data) ? ekskulRes.data : ekskulRes.data.data || [];
       
       // If no ekskul assigned, show all (for testing)
       if (ekskulList.length === 0) {
         const allRes = await api.get('/ekstrakurikuler');
-        ekskulList = allRes.data;
+        ekskulList = Array.isArray(allRes.data) ? allRes.data : allRes.data.data || [];
       }
       
       setMyEkskuls(ekskulList);
@@ -48,7 +49,9 @@ export default function ExtracurricularManagement() {
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal memuat data ekskul');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal memuat data ekskul');
+      }
     }
   }, [selectedEkskul]);
 
@@ -56,10 +59,12 @@ export default function ExtracurricularManagement() {
     if (!selectedEkskul) return;
     try {
       const res = await api.get('/ekstrakurikuler-anggota', { params: { ekstrakurikuler_id: selectedEkskul } });
-      setAnggota(res.data);
+      setAnggota(Array.isArray(res.data) ? res.data : res.data.data || []);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal memuat anggota');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal memuat anggota');
+      }
     }
   }, [selectedEkskul]);
 
@@ -90,7 +95,9 @@ export default function ExtracurricularManagement() {
       toast.success('Presensi berhasil disimpan!');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal menyimpan presensi');
+      if (!isUnauthorizedError(err)) {
+        toast.error(error.response?.data?.message || 'Gagal menyimpan presensi');
+      }
     }
   };
 
@@ -145,32 +152,32 @@ export default function ExtracurricularManagement() {
                   </tr>
                 ) : anggota.map((a) => (
                     <tr key={a.id} className="hover:bg-muted/50">
-                      <td className="p-3 font-medium">{a.siswa?.nama_lengkap || '-'}</td>
+                      <td className="p-3 font-medium">{a.siswa?.namaLengkap || '-'}</td>
                       <td className="p-3">
                          <Badge variant="outline">{a.siswa?.status || 'Aktif'}</Badge>
                       </td>
                       <td className="p-3 flex justify-center gap-2">
                          <Button 
                            size="sm" 
-                           variant={attendance[a.siswa_id] === 'hadir' ? 'default' : 'outline'}
-                           className={attendance[a.siswa_id] === 'hadir' ? 'bg-green-600 hover:bg-green-700' : ''}
-                           onClick={() => handleAttendance(a.siswa_id, 'hadir')}
+                           variant={attendance[a.siswaId] === 'hadir' ? 'default' : 'outline'}
+                           className={attendance[a.siswaId] === 'hadir' ? 'bg-green-600 hover:bg-green-700' : ''}
+                           onClick={() => handleAttendance(a.siswaId, 'hadir')}
                          >
                            <CheckCircle2 className="w-4 h-4 mr-1" /> Hadir
                          </Button>
                          <Button 
                            size="sm" 
-                           variant={attendance[a.siswa_id] === 'izin' ? 'default' : 'outline'}
-                           className={attendance[a.siswa_id] === 'izin' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
-                           onClick={() => handleAttendance(a.siswa_id, 'izin')}
+                           variant={attendance[a.siswaId] === 'izin' ? 'default' : 'outline'}
+                           className={attendance[a.siswaId] === 'izin' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
+                           onClick={() => handleAttendance(a.siswaId, 'izin')}
                          >
                            <Clock className="w-4 h-4 mr-1" /> Izin
                          </Button>
                          <Button 
                            size="sm" 
-                           variant={attendance[a.siswa_id] === 'alfa' ? 'default' : 'outline'}
-                           className={attendance[a.siswa_id] === 'alfa' ? 'bg-red-600 hover:bg-red-700' : ''}
-                           onClick={() => handleAttendance(a.siswa_id, 'alfa')}
+                           variant={attendance[a.siswaId] === 'alfa' ? 'default' : 'outline'}
+                           className={attendance[a.siswaId] === 'alfa' ? 'bg-red-600 hover:bg-red-700' : ''}
+                           onClick={() => handleAttendance(a.siswaId, 'alfa')}
                          >
                            <XCircle className="w-4 h-4 mr-1" /> Alfa
                          </Button>

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, UserPlus, Trash2, Loader2 } from 'lucide-react';
 import api from '@/lib/axios';
+import { isUnauthorizedError } from '@/lib/api-errors';
 
 interface Ekskul {
   id: string;
@@ -17,10 +18,10 @@ interface Ekskul {
 
 interface Anggota {
   id: string;
-  ekstrakurikuler_id: string;
-  siswa_id: string;
-  created_at: string;
-  siswa?: { id: string; nama_lengkap: string; status: string };
+  ekstrakurikulerId: string;
+  siswaId: string;
+  createdAt: string;
+  siswa?: { id: string; namaLengkap: string; status: string };
 }
 
 interface Siswa {
@@ -53,13 +54,15 @@ export default function PelatihDashboard() {
     try {
       // 1. Get Ekskul assigned to this coach
       const ekskulRes = await api.get(`/ekstrakurikuler?guru_id=${user.id}`);
-      const myEkskul = ekskulRes.data[0] || null;
+      const ekskulData = Array.isArray(ekskulRes.data) ? ekskulRes.data : ekskulRes.data.data || [];
+      const myEkskul = ekskulData[0] || null;
       setEkskul(myEkskul);
 
       if (myEkskul) {
         // 2. Get Members of this ekskul
         const anggotaRes = await api.get(`/ekstrakurikuler-anggota?ekstrakurikuler_id=${myEkskul.id}`);
-        setAnggota(anggotaRes.data);
+        const anggotaData = Array.isArray(anggotaRes.data) ? anggotaRes.data : anggotaRes.data.data || [];
+        setAnggota(anggotaData);
 
         // 3. Get Classes and Students
         const [kelasRes, siswaRes] = await Promise.all([
@@ -70,22 +73,24 @@ export default function PelatihDashboard() {
         setKelasList(Array.isArray(kelasRes.data) ? kelasRes.data : (kelasRes.data.data || []));
         
         // Filter out students already in this ekskul
-        const currentMemberIds = anggotaRes.data.map((a: Anggota) => a.siswa_id);
+        const currentMemberIds = anggotaData.map((a: Anggota) => a.siswaId);
         const rawSiswa = Array.isArray(siswaRes.data) ? siswaRes.data : (siswaRes.data.data || []);
         
         const mappedSiswa = rawSiswa
           .filter((s: any) => !currentMemberIds.includes(s.id))
           .map((s: any) => ({
             id: s.id,
-            namaLengkap: s.nama_lengkap || s.namaLengkap || 'Tanpa Nama',
-            kelasId: s.kelas_id || s.kelasId
+            namaLengkap: s.namaLengkap || 'Tanpa Nama',
+            kelasId: s.kelasId
           }));
         
         setAllSiswa(mappedSiswa);
       }
     } catch (err: any) {
-      console.error('Error loading coach data:', err);
-      toast.error('Gagal memuat data');
+      if (!isUnauthorizedError(err)) {
+        console.error('Error loading coach data:', err);
+        toast.error('Gagal memuat data');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -246,9 +251,9 @@ export default function PelatihDashboard() {
                   </tr>
                 ) : anggota.map((a) => (
                   <tr key={a.id} className="hover:bg-muted/50">
-                    <td className="p-3 font-medium">{a.siswa?.nama_lengkap || '-'}</td>
+                    <td className="p-3 font-medium">{a.siswa?.namaLengkap || '-'}</td>
                     <td className="p-3 text-muted-foreground">
-                      {new Date(a.created_at).toLocaleDateString('id-ID')}
+                      {new Date(a.createdAt).toLocaleDateString('id-ID')}
                     </td>
                     <td className="p-3">
                       <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
