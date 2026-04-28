@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiData } from '@/hooks/useApiData';
+import api from '@/lib/axios';
 import type { PengajaranGuru, Kelas, Siswa, MataPelajaran } from '@/types';
 import { Save, FileDown, FileSpreadsheet, Inbox, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -34,32 +35,108 @@ export default function Grading() {
 
   const siswaInKelas = useMemo(() => allSiswa.filter(s => s.kelasId === selectedKelas), [selectedKelas, allSiswa]);
 
-  const [localGrades, setLocalGrades] = useState<Record<string, { tugas: number; uts: number; uas: number }>>({});
+  const [localGrades, setLocalGrades] = useState<Record<string, { tugas: number | string; uts: number | string; uas: number | string }>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingGrades, setIsLoadingGrades] = useState(false);
 
   // Load existing grades
-  useMemo(() => {
+  useEffect(() => {
     if (!selectedKelas || !selectedMapel) return;
-    const grades: Record<string, { tugas: number; uts: number; uas: number }> = {};
-    siswaInKelas.forEach(s => {
-      grades[s.id] = { tugas: 0, uts: 0, uas: 0 };
-    });
-    setLocalGrades(grades);
-  }, [selectedKelas, selectedMapel, siswaInKelas.length]);
+    
+    let isMounted = true;
+    const fetchGrades = async () => {
+      setIsLoadingGrades(true);
+      try {
+        const response = await api.get(`/nilai`, {
+          params: {
+            kelas_id: selectedKelas,
+            mata_pelajaran_id: selectedMapel
+          }
+        });
+        
+        if (isMounted) {
+          const grades: Record<string, { tugas: number | string; uts: number | string; uas: number | string }> = {};
+          
+          // Set initial 0
+          siswaInKelas.forEach(s => {
+            grades[s.id] = { tugas: 0, uts: 0, uas: 0 };
+          });
+
+          // Overlay saved data
+          const savedData = response.data.data || [];
+          savedData.forEach((g: any) => {
+            if (grades[g.siswa_id]) {
+              grades[g.siswa_id] = {
+                tugas: g.tugas || 0,
+                uts: g.uts || 0,
+                uas: g.uas || 0
+              };
+            }
+          });
+          
+          setLocalGrades(grades);
+        }
+      } catch (err) {
+        console.error("Failed to fetch grades", err);
+      } finally {
+        if (isMounted) setIsLoadingGrades(false);
+      }
+    };
+    
+    fetchGrades();
+
+    return () => { isMounted = false; };
+  }, [selectedKelas, selectedMapel, siswaInKelas]);
 
   const updateGrade = (siswaId: string, field: 'tugas' | 'uts' | 'uas', value: string) => {
-    const num = Math.min(100, Math.max(0, parseInt(value) || 0));
-    setLocalGrades(prev => ({ ...prev, [siswaId]: { ...prev[siswaId], [field]: num } }));
+    let parsed: number | string = value.replace(/^0+(?=\d)/, ''); // Remove leading zeros except last one
+    if (parsed !== '') {
+      const num = parseInt(parsed);
+      if (!isNaN(num)) {
+        parsed = Math.min(100, Math.max(0, num));
+      } else {
+        parsed = '';
+      }
+    }
+    setLocalGrades(prev => ({ ...prev, [siswaId]: { ...prev[siswaId], [field]: parsed } }));
   };
 
-  const calculateAverage = (g: { tugas: number; uts: number; uas: number }) => {
-    return Math.round((g.tugas * 0.3 + g.uts * 0.3 + g.uas * 0.4) * 100) / 100;
+  const calculateAverage = (g: { tugas: number | string; uts: number | string; uas: number | string }) => {
+    const t = Number(g.tugas) || 0;
+    const ut = Number(g.uts) || 0;
+    const ua = Number(g.uas) || 0;
+    return Math.round((t * 0.3 + ut * 0.3 + ua * 0.4) * 100) / 100;
   };
 
   const saveGrades = async () => {
+    setIsSaving(true);
     try {
+      const payload = siswaInKelas.map(s => {
+        const g = localGrades[s.id] || { tugas: 0, uts: 0, uas: 0 };
+        return {
+          siswa_id: s.id,
+          tugas: Number(g.tugas) || 0,
+          uts: Number(g.uts) || 0,
+          uas: Number(g.uas) || 0,
+          rata_rata: calculateAverage(g)
+        };
+      });
+
+      await api.post('/nilai/batch', {
+        kelas_id: selectedKelas,
+        mata_pelajaran_id: selectedMapel,
+        grades: payload
+      });
+
       toast({ title: 'Berhasil', description: 'Nilai berhasil disimpan' });
-    } catch (err) {
-      toast({ title: 'Gagal', description: 'Gagal menyimpan nilai', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ 
+        title: 'Gagal', 
+        description: err.response?.data?.message || 'Gagal menyimpan nilai', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -68,7 +145,7 @@ export default function Grading() {
     await import('jspdf-autotable');
     const doc = new jsPDF();
     const mapelNama = mapel.find(m => m.id === selectedMapel)?.nama || '';
-    const kelasNama = kelas.find(k => k.id === selectedKelas)?.nama || '';
+    const kelasNama = kelas.find(k => k.id === selectedKelas)?.namaKelas || '';
 
     doc.setFontSize(16);
     doc.text('Laporan Nilai Siswa', 14, 20);
@@ -77,7 +154,7 @@ export default function Grading() {
 
     const rows = siswaInKelas.map((s, i) => {
       const g = localGrades[s.id] || { tugas: 0, uts: 0, uas: 0 };
-      return [i + 1, s.namaLengkap, g.tugas, g.uts, g.uas, calculateAverage(g)];
+      return [i + 1, s.namaLengkap, Number(g.tugas) || 0, Number(g.uts) || 0, Number(g.uas) || 0, calculateAverage(g)];
     });
 
     (doc as any).autoTable({
@@ -92,11 +169,11 @@ export default function Grading() {
   const exportExcel = async () => {
     const XLSX = await import('xlsx');
     const mapelNama = mapel.find(m => m.id === selectedMapel)?.nama || '';
-    const kelasNama = kelas.find(k => k.id === selectedKelas)?.nama || '';
+    const kelasNama = kelas.find(k => k.id === selectedKelas)?.namaKelas || '';
 
     const data = siswaInKelas.map((s, i) => {
       const g = localGrades[s.id] || { tugas: 0, uts: 0, uas: 0 };
-      return { No: i + 1, Nama: s.namaLengkap, Tugas: g.tugas, UTS: g.uts, UAS: g.uas, 'Rata-rata': calculateAverage(g) };
+      return { No: i + 1, Nama: s.namaLengkap, Tugas: Number(g.tugas) || 0, UTS: Number(g.uts) || 0, UAS: Number(g.uas) || 0, 'Rata-rata': calculateAverage(g) };
     });
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -151,11 +228,18 @@ export default function Grading() {
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={exportPDF}><FileDown className="h-4 w-4 mr-1" />PDF</Button>
               <Button size="sm" variant="outline" onClick={exportExcel}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
-              <Button size="sm" onClick={saveGrades}><Save className="h-4 w-4 mr-1" />Simpan</Button>
+              <Button size="sm" onClick={saveGrades} disabled={isLoadingGrades || isSaving}>
+                {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                {isSaving ? 'Menyimpan...' : 'Simpan'}
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {siswaInKelas.length === 0 ? (
+            {isLoadingGrades ? (
+               <div className="flex justify-center py-12">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
+               </div>
+            ) : siswaInKelas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Inbox className="h-12 w-12 mb-3 opacity-40" />
                 <p className="text-sm">Tidak ada siswa di kelas ini</p>
@@ -167,10 +251,10 @@ export default function Grading() {
                     <TableRow>
                       <TableHead className="w-12">No</TableHead>
                       <TableHead>Nama</TableHead>
-                      <TableHead className="w-20 text-center">Tugas (30%)</TableHead>
-                      <TableHead className="w-20 text-center">UTS (30%)</TableHead>
-                      <TableHead className="w-20 text-center">UAS (40%)</TableHead>
-                      <TableHead className="w-24 text-center">Rata-rata</TableHead>
+                      <TableHead className="w-32 min-w-[120px] text-center">Tugas (30%)</TableHead>
+                      <TableHead className="w-32 min-w-[120px] text-center">UTS (30%)</TableHead>
+                      <TableHead className="w-32 min-w-[120px] text-center">UAS (40%)</TableHead>
+                      <TableHead className="w-24 min-w-[100px] text-center">Rata-rata</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -181,10 +265,10 @@ export default function Grading() {
                         <TableRow key={s.id}>
                           <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                           <TableCell className="font-medium">{s.namaLengkap}</TableCell>
-                          <TableCell><Input type="number" min="0" max="100" className="text-center h-8" value={g.tugas} onChange={e => updateGrade(s.id, 'tugas', e.target.value)} /></TableCell>
-                          <TableCell><Input type="number" min="0" max="100" className="text-center h-8" value={g.uts} onChange={e => updateGrade(s.id, 'uts', e.target.value)} /></TableCell>
-                          <TableCell><Input type="number" min="0" max="100" className="text-center h-8" value={g.uas} onChange={e => updateGrade(s.id, 'uas', e.target.value)} /></TableCell>
-                          <TableCell className="text-center font-heading font-bold">{avg}</TableCell>
+                          <TableCell><Input type="number" min="0" max="100" className="text-center h-10 w-full font-semibold" value={g.tugas} onChange={e => updateGrade(s.id, 'tugas', e.target.value)} /></TableCell>
+                          <TableCell><Input type="number" min="0" max="100" className="text-center h-10 w-full font-semibold" value={g.uts} onChange={e => updateGrade(s.id, 'uts', e.target.value)} /></TableCell>
+                          <TableCell><Input type="number" min="0" max="100" className="text-center h-10 w-full font-semibold" value={g.uas} onChange={e => updateGrade(s.id, 'uas', e.target.value)} /></TableCell>
+                          <TableCell className="text-center font-heading font-bold text-lg">{avg}</TableCell>
                         </TableRow>
                       );
                     })}
